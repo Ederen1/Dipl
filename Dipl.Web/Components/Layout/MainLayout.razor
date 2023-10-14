@@ -1,4 +1,5 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Security.Claims
+@inherits LayoutComponentBase
 
 <div class="page">
     <div class="sidebar">
@@ -8,8 +9,17 @@
     <main>
         <div class="top-row px-4">
             <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <AuthorizeView>
+                <Authorized>
+                    @context.User.FindFirst(ClaimTypes.Name)!.Value
+                    <a class="btn btn-danger" href="login/logout">Logout</a>
+                </Authorized>
+                <NotAuthorized>
+                    <a class="btn btn-success" href="login/microsoft?RedirectUri=/Counter">Login</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
-
+        
         <article class="content px-4">
             @Body
         </article>
