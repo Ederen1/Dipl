@@ -1,7 +1,6 @@
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
-using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -11,10 +10,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddAuthentication("Cookies")
-    .AddCookie(opt =>
-    {
-        opt.Cookie.Name = "AuthCookie";
-    })
+    .AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; })
     .AddMicrosoftAccount(opt =>
     {
         opt.SignInScheme = "Cookies";
@@ -43,17 +39,17 @@ app.UseAuthorization();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapGet("/login/microsoft", (string redirectUri) =>
+app.MapGet("/Account/Login", (string returnUrl) =>
 {
     var props = new AuthenticationProperties
     {
-        RedirectUri = redirectUri
+        RedirectUri = returnUrl
     };
 
     return Results.Challenge(props, new[] { MicrosoftAccountDefaults.AuthenticationScheme });
 });
 
-app.MapGet("/login/logout", async (HttpContext httpContext) =>
+app.MapGet("/Account/Logout", async (HttpContext httpContext) =>
 {
     await httpContext.SignOutAsync();
     return Results.Redirect("/");
