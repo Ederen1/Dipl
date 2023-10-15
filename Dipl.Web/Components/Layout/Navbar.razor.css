@@ -1,0 +1,10 @@
+﻿nav {
+    display: flex;
+    padding: 10px;
+    background-color: lightblue;
+    align-items: center;
+}
+
+.logo {
+    margin-right: auto;
+}
