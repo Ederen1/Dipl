@@ -31,7 +31,7 @@ public class DbTest
     {
         var user = _dbContext.Users.Add(new User { UserId = Guid.NewGuid() });
         var permission = _dbContext.Permissions.Add(new Permission { Group = new Group(), Read = true, Write = true });
-        user.Entity.Links.Add(new Link { LinkId = "SomeLinkId", Permission = permission.Entity });
+        user.Entity.Links.Add(new Link { LinkId = "SomeLinkId", Permission = permission.Entity, Folder = "/some/folder"});
 
         _dbContext.SaveChanges();
 
