@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
