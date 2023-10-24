@@ -1,8 +1,8 @@
-using System.Security.Claims;
-using System.Text.Json;
+using Dipl.Business;
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -19,6 +19,12 @@ builder.Services.AddAuthentication("Cookies")
         opt.ClientId = configuration["Microsoft:Id"]!;
         opt.ClientSecret = configuration["Microsoft:Secret"]!;
     });
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseLazyLoadingProxies();
+    options.UseSqlite("Datasource=main.sqlite3");
+});
 
 var app = builder.Build();
 
@@ -40,6 +46,11 @@ app.UseAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetService<AppDbContext>()!.Database.EnsureCreated();
+}
 
 app.MapGet("/Account/Login", (string returnUrl) =>
 {
