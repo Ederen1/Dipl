@@ -1,15 +1,49 @@
 ﻿@page "/upload"
+@rendermode RenderMode.InteractiveServer
 
 <div class="container">
-    <div class="p-5">
-        <InputFile class="fileDrop btn btn-light w-100" OnChange="FileDrop"></InputFile>
+    <div class="m-5 position-relative">
+        <div class="fileText">
+            <h2>Drop files to upload.</h2>
+        </div>
+        <InputFile class="fileDrop btn btn-light w-100" OnChange="FileDrop" multiple>
+        </InputFile>
     </div>
+
+    <table class="table table-sm table-striped">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Remove</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var file in Files)
+        {
+            <tr>
+                <td>@file.Name</td>
+                <td>
+                    <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
 </div>
 
 @code {
-    bool Dragging { get; set; }
-    
+    List<IBrowserFile> Files { get; set; } = new();
+
     private void FileDrop(InputFileChangeEventArgs obj)
     {
+        var files = obj.GetMultipleFiles(obj.FileCount);
+        Files.AddRange(files);
     }
+
+    private void RemoveFromList(IBrowserFile file)
+    {
+        Files.Remove(file);
+    }
+
 }
