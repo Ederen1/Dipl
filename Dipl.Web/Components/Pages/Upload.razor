@@ -1,7 +1,21 @@
 ﻿@page "/upload"
+@using Dipl.Business.Services
+@using System.Security.Claims
+@using Common.Types;
+@using Common.Extensions;
+@using Dipl.Business.Models;
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+@inject FileManagerService FileManager
 @rendermode RenderMode.InteractiveServer
 
 <div class="container">
+    <CascadingAuthenticationState>
+        <AuthorizeView>
+            <Authorized>
+                <input type="text" placeholder="Folder name... (optional)" @bind="FolderName">
+            </Authorized>
+        </AuthorizeView>
+    </CascadingAuthenticationState>
     <div class="m-5 position-relative">
         <div class="fileText">
             <h2>Drop files to upload.</h2>
@@ -12,38 +26,105 @@
 
     <table class="table table-sm table-striped">
         <thead>
-        <tr>
-            <th>Name</th>
-            <th>Remove</th>
-        </tr>
+            <tr>
+                <th>Name</th>
+                <th>Remove</th>
+                <th>Done</th>
+            </tr>
         </thead>
         <tbody>
-        @foreach (var file in Files)
-        {
-            <tr>
-                <td>@file.Name</td>
-                <td>
-                    <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
-                </td>
-            </tr>
-        }
+            @foreach (var file in Files)
+            {
+                <tr>
+                    <td>@file.Name</td>
+                    <td>
+                        <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
+                    </td>
+                    <td>
+                        @if (file.Done)
+                        {
+                            <div class="text-success">Done!</div>
+                        }
+                        else
+                        {
+                            <progress class="progress" max="100" value="@file.Progress"></progress>
+                        }
+
+                    </td>
+                </tr>
+            }
         </tbody>
     </table>
 
 </div>
 
 @code {
-    List<IBrowserFile> Files { get; set; } = new();
+    string FolderName { get; set; } = "";
+    List<UploadFileModel> Files { get; set; } = new();
 
-    private void FileDrop(InputFileChangeEventArgs obj)
+    private async Task FileDrop(InputFileChangeEventArgs obj)
     {
-        var files = obj.GetMultipleFiles(obj.FileCount);
-        Files.AddRange(files);
+        var files = obj.GetMultipleFiles(10000);
+        var userInfo = await GetUserIdentity();
+        var cts = new CancellationTokenSource();
+        var token = cts.Token;
+
+        AddFilesToList(files);
+        await SetupFolderLazy(userInfo);
+
+        foreach (var file in Files)
+        {
+            if (file.Started)
+                continue;
+
+            file.Started = true;
+            using var stream = file.OpenReadStream(53_687_091_200, token);
+            await FileManager.UploadFile(_uploadFolder, file.Name, stream, token);
+
+            file.Progress = 100;
+        }
     }
 
-    private void RemoveFromList(IBrowserFile file)
+    string _uploadFolder = null!;
+    private async Task SetupFolderLazy(UserInfo? userInfo)
     {
-        Files.Remove(file);
+        if (_uploadFolder != null)
+            return;
+
+        var uploadFolder = await FileManager.SetupFolderForUpload(FolderName, userInfo);
+        this._uploadFolder = uploadFolder;
+    }
+
+    private void AddFilesToList(IEnumerable<IBrowserFile> files)
+    {
+        foreach (var file in files)
+        {
+            if (Files.Any(x => x.Name == file.Name))
+                continue; // TODO: Show possibility to replace file
+
+            Files.Add(new UploadFileModel
+                {
+                    Name = file.Name,
+                    Size = file.Size,
+                    OpenReadStream = file.OpenReadStream,
+                });
+        }
+    }
+
+    private async Task<UserInfo?> GetUserIdentity()
+    {
+        var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
+
+        if (identity == null || identity.IsAuthenticated == false)
+            return null;
+
+        return identity.MapToUserInfo();
+    }
+
+
+    private void RemoveFromList(UploadFileModel file)
+    {
+
     }
 
 }

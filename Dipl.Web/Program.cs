@@ -1,4 +1,5 @@
 using Dipl.Business;
+using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
@@ -25,6 +26,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseLazyLoadingProxies();
     options.UseSqlite("Datasource=main.sqlite3");
 });
+
+builder.Services.AddServiceLayer();
 
 var app = builder.Build();
 
