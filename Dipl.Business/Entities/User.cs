@@ -3,7 +3,7 @@
 public class User
 {
     public Guid UserId { get; set; }
-    public required string Mail { get; set; }
+    public required string Email { get; set; }
     public required string UserName { get; set; }
     public virtual ICollection<Link> Links { get; set; } = new List<Link>();
     public virtual ICollection<Group> Groups { get; set; } = new List<Group>();

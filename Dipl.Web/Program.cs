@@ -1,4 +1,6 @@
+using System.Security.Claims;
 using Dipl.Business;
+using Dipl.Business.Extensions;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
@@ -60,14 +62,26 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
 }
 
-app.MapGet("/Account/Login", (string returnUrl) =>
+app.MapGet("/Account/Login", () =>
 {
     var props = new AuthenticationProperties
     {
-        RedirectUri = returnUrl
+        RedirectUri = "/Account/LoginCallback"
     };
 
     return Results.Challenge(props, new[] { MicrosoftAccountDefaults.AuthenticationScheme });
+});
+
+app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService _userService) =>
+{
+    var identity = context.User.Identity as ClaimsIdentity;
+    if (identity == null || !identity.IsAuthenticated)
+        return Results.Redirect("/");
+
+    var user = identity.MapToUser();
+    await _userService.CreateIfNotExists(user);
+
+    return Results.Redirect("/");
 });
 
 app.MapGet("/Account/Logout", async (HttpContext httpContext) =>

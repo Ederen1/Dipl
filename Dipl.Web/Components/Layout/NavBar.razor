@@ -2,13 +2,13 @@
 
 <nav>
     <a class="logo" href="/"><img src="favicon.png" alt="Logo"></a>
-        
+
     <AuthorizeView>
         <Authorized>
             <a class="logout" href="/Account/Logout">Logout</a>
         </Authorized>
         <NotAuthorized>
-            <a class="login" href="/Account/Login?ReturnUrl=/@NavigationManager.ToBaseRelativePath(NavigationManager.Uri)">Login</a>
+            <a class="login" href="/Account/Login">Login</a>
         </NotAuthorized>
     </AuthorizeView>
 </nav>

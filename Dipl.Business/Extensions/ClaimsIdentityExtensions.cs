@@ -1,16 +1,20 @@
 using System.Security.Claims;
-using Dipl.Common.Types;
+using Dipl.Business.Entities;
 
-namespace Dipl.Common.Extensions;
+namespace Dipl.Business.Extensions;
 
 public static class ClaimsIdentityExtensions
 {
-    public static UserInfo MapToUserInfo(this ClaimsIdentity identity)
+    public static User MapToUser(this ClaimsIdentity identity)
     {
-        return new UserInfo
+        if (!identity.IsAuthenticated)
+            throw new Exception("User is not authenticated");
+
+        return new User
         {
+            Email = GetEmail(identity),
             UserId = GetUserId(identity),
-            Email = GetEmail(identity)
+            UserName = identity.Name!
         };
     }
 

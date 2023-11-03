@@ -5,7 +5,7 @@ namespace Dipl.Business.Services;
 
 public class LinksService(AppDbContext dbContext)
 {
-    public async Task<Link> GenerateLink(string folderPath, UserInfo? user)
+    public async Task<Link> GenerateLink(string folderPath, User? user)
     {
         User createdBy;
         if (user == null)

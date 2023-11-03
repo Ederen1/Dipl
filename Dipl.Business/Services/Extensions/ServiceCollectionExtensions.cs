@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
         serviceCollection.AddScoped<FileManagerService>();
         serviceCollection.AddScoped<LinksService>();
         serviceCollection.AddScoped<InitializationService>();
+        serviceCollection.AddScoped<UsersService>();
         serviceCollection.AddScoped<IStoreService, FileStoreService>(_ => new FileStoreService("folder/"));
     }
 }

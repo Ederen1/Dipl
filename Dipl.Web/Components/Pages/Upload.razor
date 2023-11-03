@@ -4,6 +4,8 @@
 @using Common.Types;
 @using Common.Extensions;
 @using Dipl.Business.Models;
+@using Dipl.Business.Extensions;
+@using Business.Entities;
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject FileManagerService FileManager
@@ -93,7 +95,7 @@
 
     Guid LinkId { get; set; }
     string _uploadFolder = null!;
-    private async Task SetupFolderLazy(UserInfo? userInfo)
+    private async Task SetupFolderLazy(User? userInfo)
     {
         if (_uploadFolder != null || LinkId != Guid.Empty)
             return;
@@ -120,14 +122,14 @@
         }
     }
 
-    private async Task<UserInfo?> GetUserIdentity()
+    private async Task<User?> GetUserIdentity()
     {
         var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
 
         if (identity == null || identity.IsAuthenticated == false)
             return null;
 
-        return identity.MapToUserInfo();
+        return identity.MapToUser();
     }
 
 

@@ -1,11 +1,12 @@
-﻿using Dipl.Business.Services.Interfaces;
+﻿using Dipl.Business.Entities;
+using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Types;
 
 namespace Dipl.Business.Services;
 
 public class FileManagerService(IStoreService storeService)
 {
-    public async Task<string> SetupFolderForUpload(string folderName, UserInfo? userInfo)
+    public async Task<string> SetupFolderForUpload(string folderName, User? userInfo)
     {
         var userOrTemporaryFolderName = userInfo?.UserId.ToString() ?? Guid.NewGuid().ToString();
         var realFolderName = await GetFolderNameIfEmpty(userOrTemporaryFolderName, folderName);
