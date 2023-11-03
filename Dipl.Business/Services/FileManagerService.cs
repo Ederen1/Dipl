@@ -1,5 +1,4 @@
-﻿using System.Security.Claims;
-using Dipl.Business.Services.Interfaces;
+﻿using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Types;
 
 namespace Dipl.Business.Services;

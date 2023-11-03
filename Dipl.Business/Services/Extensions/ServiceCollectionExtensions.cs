@@ -8,6 +8,8 @@ public static class ServiceCollectionExtensions
     public static void AddServiceLayer(this IServiceCollection serviceCollection)
     {
         serviceCollection.AddScoped<FileManagerService>();
+        serviceCollection.AddScoped<LinksService>();
+        serviceCollection.AddScoped<InitializationService>();
         serviceCollection.AddScoped<IStoreService, FileStoreService>(_ => new FileStoreService("folder/"));
     }
 }

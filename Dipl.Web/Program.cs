@@ -1,4 +1,5 @@
 using Dipl.Business;
+using Dipl.Business.Services;
 using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
@@ -25,8 +26,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies();
     options.UseSqlite("Datasource=main.sqlite3");
+    options.EnableSensitiveDataLogging();
+    options.EnableDetailedErrors();
 });
-
 builder.Services.AddServiceLayer();
 
 var app = builder.Build();
@@ -52,7 +54,10 @@ app.MapRazorComponents<App>()
 
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetService<AppDbContext>()!.Database.EnsureCreated();
+    var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
+    await db.EnsureDeletedAsync();
+    await db.EnsureCreatedAsync();
+    await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
 }
 
 app.MapGet("/Account/Login", (string returnUrl) =>

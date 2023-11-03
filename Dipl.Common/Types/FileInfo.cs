@@ -2,7 +2,7 @@
 
 public class FileInfo
 {
-    public string Path;
+    public required string Path;
     public DateTime Created;
     public DateTime Updated;
     public bool IsFolder;

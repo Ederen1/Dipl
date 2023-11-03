@@ -4,8 +4,10 @@
 @using Common.Types;
 @using Common.Extensions;
 @using Dipl.Business.Models;
+@inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject FileManagerService FileManager
+@inject LinksService LinksService
 @rendermode RenderMode.InteractiveServer
 
 <div class="container">
@@ -16,6 +18,10 @@
             </Authorized>
         </AuthorizeView>
     </CascadingAuthenticationState>
+    <div>
+        <h3>Download link: </h3>
+        <a href="">@(Navigator.BaseUri)link/@LinkId</a>
+    </div>
     <div class="m-5 position-relative">
         <div class="fileText">
             <h2>Drop files to upload.</h2>
@@ -85,14 +91,17 @@
         }
     }
 
+    Guid LinkId { get; set; }
     string _uploadFolder = null!;
     private async Task SetupFolderLazy(UserInfo? userInfo)
     {
-        if (_uploadFolder != null)
+        if (_uploadFolder != null || LinkId != Guid.Empty)
             return;
 
         var uploadFolder = await FileManager.SetupFolderForUpload(FolderName, userInfo);
         this._uploadFolder = uploadFolder;
+
+        LinkId = (await LinksService.GenerateLink(uploadFolder, userInfo)).LinkId;
     }
 
     private void AddFilesToList(IEnumerable<IBrowserFile> files)

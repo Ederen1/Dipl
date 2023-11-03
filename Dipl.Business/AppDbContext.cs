@@ -5,7 +5,8 @@ namespace Dipl.Business;
 
 public class AppDbContext(DbContextOptions options) : DbContext(options)
 {
-    public DbSet<User> Users { get; set; } = null!;
-    public DbSet<Link> Links { get; set; } = null!;
-    public DbSet<Permission> Permissions { get; set; } = null!;
+    public DbSet<User> Users { get; set; }
+    public DbSet<Link> Links { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
+    public DbSet<Group> Groups { get; set; }
 }
