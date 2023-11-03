@@ -1,0 +1,8 @@
+@page "/link/{linkId:guid}"
+
+<h3>Link Id: @LinkId</h3>
+
+@code {
+    [Parameter]
+    public Guid LinkId { get; set; }
+}
