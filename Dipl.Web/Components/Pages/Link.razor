@@ -1,8 +1,43 @@
 @page "/link/{linkId:guid}"
+@using Dipl.Business.Services;
+@inject LinksService LinksService
 
-<h3>Link Id: @LinkId</h3>
+<div class="container">
+    @if (Files.Length == 1)
+    {
+        <a class="btn btn-primary" href="/download/@LinkId/@Files[0].Name" download="@Files[0].Name"><span>Download
+                file</span></a>
+    }
+    else if (Files.Length > 1)
+    {
+        <a class="btn btn-primary" href="/download/@LinkId" download="@Files[0].Name"><span>Download all files</span></a>
+    }
+
+    <table class="table striped">
+        <thead>
+            <th>Name</th>
+            <th>Download</th>
+        </thead>
+    </table>
+
+    <tbody>
+        @foreach (var file in Files)
+        {
+            <tr>
+                <td>@file.Name</td>
+                <td><a class="btn btn-primary" href="/download/@LinkId/@file.Name" download="@file.Name">Download</a></td>
+            </tr>
+        }
+    </tbody>
+</div>
 
 @code {
     [Parameter]
     public Guid LinkId { get; set; }
+
+    public Dipl.Common.Types.FileInfo[] Files { get; set; } = Array.Empty<Dipl.Common.Types.FileInfo>();
+    protected override async Task OnInitializedAsync()
+    {
+        Files = await LinksService.EnumerateLink(LinkId);
+    }
 }

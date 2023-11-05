@@ -1,9 +1,9 @@
 using Dipl.Business.Entities;
-using Dipl.Common.Types;
+using Dipl.Business.Services.Interfaces;
 
 namespace Dipl.Business.Services;
 
-public class LinksService(AppDbContext dbContext)
+public class LinksService(AppDbContext dbContext, IStoreService fileStoreService)
 {
     public async Task<Link> GenerateLink(string folderPath, User? user)
     {
@@ -20,5 +20,17 @@ public class LinksService(AppDbContext dbContext)
         await dbContext.SaveChangesAsync();
 
         return link;
+    }
+
+    public async Task<Common.Types.FileInfo[]> EnumerateLink(Guid linkId)
+    {
+        var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+        return await fileStoreService.List(link.Folder);
+    }
+
+    public async Task<Stream> GetFile(Guid linkId, string fileName)
+    {
+        var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+        return await fileStoreService.GetFile($"{link.Folder}/{fileName}");
     }
 }

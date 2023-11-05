@@ -12,6 +12,6 @@ public interface IStoreService
 
     public Task DeleteFolder(string path, bool recursive = false);
     public Task Move(string source, string dest);
-    public Task<IEnumerable<FileInfo>> List(string path);
-    public Task<IEnumerable<FileInfo>> Search(string name);
+    public Task<FileInfo[]> List(string path);
+    public Task<FileInfo[]> Search(string name);
 }

@@ -61,7 +61,7 @@ public class FileStoreService(string basePath) : IStoreService
         return Task.CompletedTask;
     }
 
-    public Task<IEnumerable<FileInfo>> List(string path)
+    public Task<FileInfo[]> List(string path)
     {
         var fullPath = basePath + path;
 
@@ -71,7 +71,7 @@ public class FileStoreService(string basePath) : IStoreService
         return Task.FromResult(found);
     }
 
-    public Task<IEnumerable<FileInfo>> Search(string name)
+    public Task<FileInfo[]> Search(string name)
     {
         var directory = new DirectoryInfo(basePath);
         var found = directory.GetFileSystemInfos(name, SearchOption.AllDirectories).MapToFileInfos();

@@ -1,6 +1,7 @@
 ﻿using Dipl.Business.Entities;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Types;
+using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
@@ -44,6 +45,6 @@ public class FileManagerService(IStoreService storeService)
 
     public async Task UploadFile(string folderName, string fileName, Stream fileStream, CancellationToken cancellationToken = default)
     {
-        await storeService.InsertFile($"{folderName}/${fileName}", fileStream, cancellationToken);
+        await storeService.InsertFile($"{folderName}/{fileName}", fileStream, cancellationToken);
     }
 }

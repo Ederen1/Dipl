@@ -20,10 +20,15 @@
             </Authorized>
         </AuthorizeView>
     </CascadingAuthenticationState>
-    <div>
-        <h3>Download link: </h3>
-        <a href="@(Navigator.BaseUri)link/@LinkId">@(Navigator.BaseUri)link/@LinkId</a>
-    </div>
+
+    @if (LinkId != Guid.Empty)
+    {
+        <div class="mt-2">
+            <h3>Download link: </h3>
+            <a href="@(Navigator.BaseUri)link/@LinkId">@(Navigator.BaseUri)link/@LinkId</a>
+        </div>
+    }
+
     <div class="m-5 position-relative">
         <div class="fileText">
             <h2>Drop files to upload.</h2>
