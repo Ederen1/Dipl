@@ -13,7 +13,7 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         else
             createdBy = await dbContext.Users.FindAsync(user.UserId) ?? throw new Exception("User not found");
 
-        var link = new Link { Folder = folderPath, CreatedBy = createdBy };
+        var link = new Link { Folder = folderPath, CreatedById = createdBy.UserId };
         link.Groups.Add(await dbContext.Groups.FindAsync(Group.GuestGrupId) ?? throw new Exception("Guest group not found"));
 
         await dbContext.Links.AddAsync(link);
@@ -22,9 +22,18 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         return link;
     }
 
+    public async Task<Link> Get(Guid linkId)
+    {
+        return await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+    }
+
     public async Task<Common.Types.FileInfo[]> EnumerateLink(Guid linkId)
     {
-        var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+        return await EnumerateLink(await Get(linkId));
+    }
+
+    public async Task<Common.Types.FileInfo[]> EnumerateLink(Link link)
+    {
         return await fileStoreService.List(link.Folder);
     }
 
@@ -32,5 +41,19 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
     {
         var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
         return await fileStoreService.GetFile($"{link.Folder}/{fileName}");
+    }
+
+    public async Task<Link> GetLinkForUpload(User user)
+    {
+        var link = new Link
+        {
+            CreatedById = user.UserId,
+            LinkType = LinkTypeEnum.Upload,
+            Folder = $"{user.UserId}/{Guid.NewGuid()}"
+        };
+
+        await dbContext.Links.AddAsync(link);
+        await dbContext.SaveChangesAsync();
+        return link;
     }
 }

@@ -10,7 +10,8 @@
     }
     else if (Files.Length > 1)
     {
-        <a class="btn btn-primary" href="/download/@LinkId" download="@Files[0].Name"><span>Download all files</span></a>
+        <a class="btn btn-primary" href="/download/@LinkId" download="@(GetFolderName()).zip"><span>Download all
+                files</span></a>
     }
 
     <table class="table striped">
@@ -18,26 +19,34 @@
             <th>Name</th>
             <th>Download</th>
         </thead>
+        <tbody>
+            @foreach (var file in Files)
+            {
+                <tr>
+                    <td>@file.Name</td>
+                    <td><a class="btn btn-primary" href="/download/@LinkId/@file.Name" download="@file.Name">Download</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
     </table>
-
-    <tbody>
-        @foreach (var file in Files)
-        {
-            <tr>
-                <td>@file.Name</td>
-                <td><a class="btn btn-primary" href="/download/@LinkId/@file.Name" download="@file.Name">Download</a></td>
-            </tr>
-        }
-    </tbody>
 </div>
 
 @code {
     [Parameter]
     public Guid LinkId { get; set; }
 
+    public Business.Entities.Link? FullLink { get; set; }
+
     public Dipl.Common.Types.FileInfo[] Files { get; set; } = Array.Empty<Dipl.Common.Types.FileInfo>();
     protected override async Task OnInitializedAsync()
     {
-        Files = await LinksService.EnumerateLink(LinkId);
+        FullLink = await LinksService.Get(LinkId);
+        Files = await LinksService.EnumerateLink(FullLink);
+    }
+
+    public string GetFolderName()
+    {
+        return FullLink!.Folder.Split('/').Last();
     }
 }

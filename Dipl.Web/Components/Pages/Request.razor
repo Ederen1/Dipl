@@ -1,2 +1,31 @@
 ﻿@page "/request"
-<h3>Request</h3>
+@using Dipl.Business.Services
+@using System.Security.Claims
+@using Dipl.Business.Extensions
+@using Dipl.Web.Components.Enums
+@inject LinksService LinksService
+@inject NavigationManager Navigator
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+@attribute [Authorize]
+
+<h3>@(Navigator.BaseUri)link/@LinkForUpload.LinkId</h3>
+<Upload Type="UploadType.Requested" Link="LinkForUpload"></Upload>
+@code {
+    Dipl.Business.Entities.Link LinkForUpload { get; set; } = null!;
+
+    private async Task<Business.Entities.User> GetUserIdentity()
+    {
+        var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
+
+        if (identity == null || identity.IsAuthenticated == false)
+            throw new Exception("User not found");
+
+        return identity.MapToUser();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await GetUserIdentity();
+        LinkForUpload = await LinksService.GetLinkForUpload(user);
+    }
+}

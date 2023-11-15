@@ -1,4 +1,5 @@
 ﻿using Dipl.Business.Entities;
+using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Types;
 using FileInfo = Dipl.Common.Types.FileInfo;
@@ -43,8 +44,18 @@ public class FileManagerService(IStoreService storeService)
         throw new Exception($"Random folder already exists, {maxTries} tries exhausted");
     }
 
-    public async Task UploadFile(string folderName, string fileName, Stream fileStream, CancellationToken cancellationToken = default)
+    public async Task UploadFile(string folderName, string fileName, Stream fileStream, Action<long> progress, CancellationToken cancellationToken = default)
     {
-        await storeService.InsertFile($"{folderName}/{fileName}", fileStream, cancellationToken);
+        await storeService.InsertFile($"{folderName}/{fileName}", fileStream, progress, cancellationToken);
+    }
+
+    public async Task DeleteFile(string folder, string fileName)
+    {
+        await storeService.Delete($"{folder}/{fileName}");
+    }
+
+    public async Task CreateFolder(string folder)
+    {
+        await storeService.CreateFolder(folder);
     }
 }

@@ -6,12 +6,19 @@ namespace Dipl.Business.Services;
 
 public class FileStoreService(string basePath) : IStoreService
 {
-    public async Task InsertFile(string filePath, Stream contents, CancellationToken cancellationToken = default)
+    public async Task InsertFile(string filePath, Stream contents, Action<long> progress, CancellationToken cancellationToken = default)
     {
         var fullPath = basePath + filePath;
 
         await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
-        await contents.CopyToAsync(file, cancellationToken);
+
+        var buffer = new byte[1024 * 1024];
+        int read = 0;
+        while (!cancellationToken.IsCancellationRequested && (read = await contents.ReadAsync(buffer, cancellationToken)) != 0)
+        {
+            await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            progress(file.Length);
+        }
     }
 
     public Task CreateFolder(string name)
