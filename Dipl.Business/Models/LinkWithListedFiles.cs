@@ -13,6 +13,8 @@ public class LinkWithListedFiles : Link
 {
     public required FileInfo[] Files { get; set; }
 
+    public string LinkName => Folder.Split('/').Last();
+    
     public static LinkWithListedFiles FromLink(Link link, FileInfo[] fileInfos)
     {
         return new LinkWithListedFiles

@@ -30,7 +30,7 @@
         <div class="fileText">
             <h2>Drop files to upload.</h2>
         </div>
-        <InputFile class="fileDrop btn btn-light w-100" OnChange="FileDrop" multiple>
+        <InputFile class="@($"fileDrop btn btn-light w-100 {(_uploading ? "disabled" : "")}")" OnChange="FileDrop" multiple>
         </InputFile>
     </div>
 
@@ -95,16 +95,21 @@
         }
     }
 
-        private async Task FileDrop(InputFileChangeEventArgs obj)
+    private bool _uploading = false;
+    
+    private async Task FileDrop(InputFileChangeEventArgs obj)
     {
         var files = obj.GetMultipleFiles(10000);
         var userInfo = await GetUserIdentity();
 
         AddFilesToList(files);
         await SetupFolderLazy(userInfo);
-
+        _uploading = true;
         foreach (var file in Files)
         {
+            if (file.Done)
+                continue;
+            
             var token = file.CancellationTokenSource.Token;
 
             try
@@ -128,6 +133,8 @@
 
             file.Progress = 100;
         }
+
+        _uploading = false;
     }
 
     private async Task SetupFolderLazy(User? userInfo)

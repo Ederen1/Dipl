@@ -3,25 +3,41 @@
 @using System.Security.Claims
 @using Dipl.Business.Extensions
 @using Dipl.Business.Models
-@using Dipl.Business.Services.Interfaces
 @inject LinksService LinksService
-@inject IStoreService StoreService
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @attribute [Authorize]
 @rendermode RenderMode.InteractiveServer
 
-<div class="container">
-    <button class="btn btn-success" @onclick="CreateLink">Create new link</button>
-    @if (LinkForUpload != null)
-    {
-        <div class="rounded p-5" style="background-color: lightgrey;">
-            <h1>New link for user: </h1>
-            <h3>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</h3>
-        </div>    
-    }
-    
+@if (LinkForUpload != null)
+{
+    <div class="container rounded p-3 mt-5 shadow-sm">
+        <h3>Link: </h3>
+        <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p>
+    </div>
+}
+<EditForm class="mx-auto col-xl-3 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink">
+    <DataAnnotationsValidator/>
+    <div class="form-group">
+        <div>
+            <label for="sendToEmail">Send to: </label>
+            <InputText class="form-control" id="sendToEmail" @bind-Value="CreateLinkModel.SendToSeparatedByCommas"></InputText>
+            @* <ValidationMessage For="() => CreateLinkModel.SendToSeparatedByCommas"/> *@
+        </div>
+        <div>
+            <label for="linkName">Link name: </label>
+            <InputText class="form-control" id="linkName" @bind-Value="CreateLinkModel.LinkName"></InputText>
+            <ValidationMessage For="() => CreateLinkModel.LinkName"/>
+        </div>
+        <div>
+            <label for="messageForUser">Message for user: </label>
+            <InputText class="form-control" id="messageForUser" @bind-Value="CreateLinkModel.MessageForUser"></InputText>
+        </div>
+        <button class="btn btn-success mt-4 mx-auto" type="submit">Generate link</button>
+    </div>
+</EditForm>
 
+<div class="container mt-5">
     <table class="table table-striped">
         <thead>
         <tr>
@@ -36,24 +52,25 @@
         @foreach (var link in MyLinks)
         {
             <tr>
-                <td>@link.Folder</td>
+                <td>@link.LinkName</td>
                 <td>@link.Files.Length</td>
                 <td>@link.LastAccessed</td>
                 <td>
                     @if (link.Files.Length == 1)
                     {
-                        <a class="btn btn-primary" href="/download/@link.LinkId/@link.Files[0].Name" download="@link.Files[0].Name"><span>Download
-                                file</span></a>
+                        <a class="btn btn-primary" href="/download/@link.LinkId/@link.Files[0].Name" download="@link.Files[0].Name">
+                            <span>Download file</span>
+                        </a>
                     }
                     else if (link.Files.Length > 1)
                     {
-                        <a class="btn btn-primary" href="/download/@link.LinkId" download="@(GetFolderName(link)).zip"><span>Download all
-                                files</span></a>
+                        <a class="btn btn-primary" href="/download/@link.LinkId" download="@(GetFolderName(link)).zip">
+                            <span>Download all files</span>
+                        </a>
                     }
                 </td>
                 <td>
-                    <button class="btn btn-danger"
-                            @onclick="() => DeleteLink(link)">Delete</button>
+                    <button class="btn btn-danger" @onclick="() => DeleteLink(link)">Delete</button>
                 </td>
             </tr>
         }
@@ -64,6 +81,7 @@
 @code {
     Dipl.Business.Entities.Link? LinkForUpload { get; set; }
     IEnumerable<LinkWithListedFiles> MyLinks { get; set; } = new List<LinkWithListedFiles>();
+    RequestLinkModel CreateLinkModel { get; set; } = new();
 
     private async Task<Business.Entities.User> GetUserIdentity()
     {
@@ -74,28 +92,34 @@
 
         return identity.MapToUser();
     }
-    
+
     private async Task DeleteLink(Business.Entities.Link link)
     {
         await LinksService.DeleteLink(link.LinkId);
+        if (LinkForUpload is not null && link.LinkId == LinkForUpload.LinkId)
+            LinkForUpload = null;
+
         MyLinks = await LinksService.GetLinksForUser(await GetUserIdentity());
     }
-    
+
     protected override async Task OnInitializedAsync()
     {
         var user = await GetUserIdentity();
-        MyLinks = await LinksService.GetLinksForUser(user);    
+        MyLinks = await LinksService.GetLinksForUser(user);
     }
 
     private async Task CreateLink()
     {
         var user = await GetUserIdentity();
-        LinkForUpload = await LinksService.GetLinkForRequest(user);
+        LinkForUpload = await LinksService.GetLinkForRequest(user, CreateLinkModel.LinkName, CreateLinkModel.SendTo, CreateLinkModel.MessageForUser);
         MyLinks = await LinksService.GetLinksForUser(user);
+
+        CreateLinkModel = new RequestLinkModel();
     }
-    
+
     private static string GetFolderName(Business.Entities.Link link)
     {
         return link.Folder.Split('/').Last();
     }
+
 }

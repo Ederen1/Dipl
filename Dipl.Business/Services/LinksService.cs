@@ -45,14 +45,17 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         return await fileStoreService.GetFile($"{link.Folder}/{fileName}");
     }
 
-    public async Task<Link> GetLinkForRequest(User user)
+    public async Task<Link> GetLinkForRequest(User user, string folderName, IEnumerable<string> sendTo, string message)
     {
         var link = new Link
         {
             CreatedById = user.UserId,
             LinkType = LinkTypeEnum.Request,
-            Folder = $"{user.UserId}/{Guid.NewGuid()}",
+            Folder = $"{user.UserId}/{folderName}",
+            Message = message
         };
+        
+        // TODO: Sending emails
 
         await fileStoreService.CreateFolder(link.Folder);
         await dbContext.Links.AddAsync(link);
