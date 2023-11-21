@@ -8,10 +8,4 @@
 @code {
     [Parameter]
     public Guid LinkId { get; set; }
-
-    Dipl.Business.Entities.Link LinkForUpload { get; set; } = null!;
-    protected override async Task OnInitializedAsync()
-    {
-        LinkForUpload = await LinksService.Get(LinkId);
-    }
 }
