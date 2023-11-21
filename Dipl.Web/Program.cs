@@ -7,6 +7,7 @@ using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +25,18 @@ builder.Services.AddAuthentication("Cookies")
         opt.ClientId = configuration["Microsoft:Id"]!;
         opt.ClientSecret = configuration["Microsoft:Secret"]!;
     });
+
+builder.Services.AddAuthorizationBuilder()
+    .AddDefaultPolicy("InAllowedDomains",
+        policy => policy.Requirements.Add(new AssertionRequirement((ctx) =>
+        {
+            var user = ctx.User.FindFirst(ClaimTypes.Email)?.Value;
+
+            if (user == null)
+                return false;
+
+            return configuration.GetSection("AllowedDomains").Get<string[]>()!.Any(x => user.EndsWith(x));
+        })));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
