@@ -2,15 +2,68 @@
 @using Dipl.Business.Services
 @using System.Security.Claims
 @using Dipl.Business.Extensions
-@using Dipl.Web.Components.Enums
+@using Dipl.Business.Models
+@using Dipl.Business.Services.Interfaces
 @inject LinksService LinksService
+@inject IStoreService StoreService
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @attribute [Authorize]
+@rendermode RenderMode.InteractiveServer
 
-<h3>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</h3>
+<div class="container">
+    <button class="btn btn-success" @onclick="CreateLink">Create new link</button>
+    @if (LinkForUpload != null)
+    {
+        <div class="rounded p-5" style="background-color: lightgrey;">
+            <h1>New link for user: </h1>
+            <h3>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</h3>
+        </div>    
+    }
+    
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Link name</th>
+            <th>Files uploaded</th>
+            <th>Accessed</th>
+            <th>Download</th>
+            <th>Delete</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var link in MyLinks)
+        {
+            <tr>
+                <td>@link.Folder</td>
+                <td>@link.Files.Length</td>
+                <td>@link.LastAccessed</td>
+                <td>
+                    @if (link.Files.Length == 1)
+                    {
+                        <a class="btn btn-primary" href="/download/@link.LinkId/@link.Files[0].Name" download="@link.Files[0].Name"><span>Download
+                                file</span></a>
+                    }
+                    else if (link.Files.Length > 1)
+                    {
+                        <a class="btn btn-primary" href="/download/@link.LinkId" download="@(GetFolderName(link)).zip"><span>Download all
+                                files</span></a>
+                    }
+                </td>
+                <td>
+                    <button class="btn btn-danger"
+                            @onclick="() => DeleteLink(link)">Delete</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
 @code {
-    Dipl.Business.Entities.Link LinkForUpload { get; set; } = null!;
+    Dipl.Business.Entities.Link? LinkForUpload { get; set; }
+    IEnumerable<LinkWithListedFiles> MyLinks { get; set; } = new List<LinkWithListedFiles>();
 
     private async Task<Business.Entities.User> GetUserIdentity()
     {
@@ -21,10 +74,28 @@
 
         return identity.MapToUser();
     }
-
+    
+    private async Task DeleteLink(Business.Entities.Link link)
+    {
+        await LinksService.DeleteLink(link.LinkId);
+        MyLinks = await LinksService.GetLinksForUser(await GetUserIdentity());
+    }
+    
     protected override async Task OnInitializedAsync()
     {
         var user = await GetUserIdentity();
+        MyLinks = await LinksService.GetLinksForUser(user);    
+    }
+
+    private async Task CreateLink()
+    {
+        var user = await GetUserIdentity();
         LinkForUpload = await LinksService.GetLinkForRequest(user);
+        MyLinks = await LinksService.GetLinksForUser(user);
+    }
+    
+    private static string GetFolderName(Business.Entities.Link link)
+    {
+        return link.Folder.Split('/').Last();
     }
 }

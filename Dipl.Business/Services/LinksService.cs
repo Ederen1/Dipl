@@ -1,5 +1,7 @@
 using Dipl.Business.Entities;
+using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Business.Services;
 
@@ -52,8 +54,32 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
             Folder = $"{user.UserId}/{Guid.NewGuid()}",
         };
 
+        await fileStoreService.CreateFolder(link.Folder);
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
         return link;
+    }
+
+    public async Task<IEnumerable<LinkWithListedFiles>> GetLinksForUser(User user)
+    {
+        var links = await dbContext.Links.Where(x => x.CreatedById == user.UserId).ToListAsync();
+
+        return await Task.WhenAll(links.Select(async link =>
+        {
+            // TODO: maybe cache this?
+            var fileInfos = await fileStoreService.List(link.Folder);
+            return LinkWithListedFiles.FromLink(link, fileInfos);
+        }));
+    }
+
+    public async Task DeleteLink(Guid linkId)
+    {
+        var cached = await dbContext.Links.FindAsync(linkId);
+        if (cached == null)
+            throw new Exception("Internal error");
+        
+        await fileStoreService.DeleteFolder(cached.Folder, true);
+        dbContext.Links.Remove(cached);
+        await dbContext.SaveChangesAsync();
     }
 }
