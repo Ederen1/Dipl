@@ -1,11 +1,12 @@
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
+using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Business.Services;
 
-public class LinksService(AppDbContext dbContext, IStoreService fileStoreService)
+public class LinksService(AppDbContext dbContext, EmailSenderService emailSenderService, NavigationManager navigationManager, IStoreService fileStoreService)
 {
     public async Task<Link> GenerateLink(string folderPath, User? user)
     {
@@ -34,9 +35,9 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         return await EnumerateLink(await Get(linkId));
     }
 
-    public async Task<Common.Types.FileInfo[]> EnumerateLink(Link link)
+    public Task<Common.Types.FileInfo[]> EnumerateLink(Link link)
     {
-        return await fileStoreService.List(link.Folder);
+        return fileStoreService.List(link.Folder);
     }
 
     public async Task<Stream> GetFile(Guid linkId, string fileName)
@@ -45,21 +46,24 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         return await fileStoreService.GetFile($"{link.Folder}/{fileName}");
     }
 
-    public async Task<Link> GetLinkForRequest(User user, string folderName, IEnumerable<string> sendTo, string message)
+    public async Task<Link> GenerateRequestAndSendEmail(User user, RequestLinkModel request)
     {
         var link = new Link
         {
             CreatedById = user.UserId,
             LinkType = LinkTypeEnum.Request,
-            Folder = $"{user.UserId}/{folderName}",
-            Message = message
+            Folder = $"{user.UserId}/{request.LinkName}",
+            Message = request.MessageForUser,
+            NotifyOnUpload = request.NotifyOnUpload,
         };
-        
-        // TODO: Sending emails
 
         await fileStoreService.CreateFolder(link.Folder);
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
+        
+        var linkUrl = navigationManager.ToAbsoluteUri($"/link/request/{link.LinkId}");        
+        await emailSenderService.NotifyOfRequest(request, user.UserName, linkUrl.ToString());
+        
         return link;
     }
 
@@ -84,5 +88,14 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         await fileStoreService.DeleteFolder(cached.Folder, true);
         dbContext.Links.Remove(cached);
         await dbContext.SaveChangesAsync();
+    }
+
+    public async Task CloseLink(Link link, string? uploader)
+    {
+        link.LinkClosed = true;
+        await dbContext.SaveChangesAsync();
+        
+        if (link.NotifyOnUpload)
+            await emailSenderService.NotifyUserUploaded(link, uploader);
     }
 }

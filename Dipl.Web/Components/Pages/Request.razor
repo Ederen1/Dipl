@@ -16,13 +16,13 @@
         <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p>
     </div>
 }
-<EditForm class="mx-auto col-xl-3 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink">
+<EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink">
     <DataAnnotationsValidator/>
     <div class="form-group">
         <div>
-            <label for="sendToEmail">Send to: </label>
-            <InputText class="form-control" id="sendToEmail" @bind-Value="CreateLinkModel.SendToSeparatedByCommas"></InputText>
-            @* <ValidationMessage For="() => CreateLinkModel.SendToSeparatedByCommas"/> *@
+            <label for="sendToEmails">Send to: </label>
+            <InputText class="form-control" id="sendToEmails" @bind-Value="CreateLinkModel.SendToSeparatedByCommas"></InputText>
+            <ValidationMessage For="() => CreateLinkModel.SendToSeparatedByCommas"/>
         </div>
         <div>
             <label for="linkName">Link name: </label>
@@ -31,7 +31,11 @@
         </div>
         <div>
             <label for="messageForUser">Message for user: </label>
-            <InputText class="form-control" id="messageForUser" @bind-Value="CreateLinkModel.MessageForUser"></InputText>
+            <InputTextArea class="form-control" id="messageForUser" @bind-Value="CreateLinkModel.MessageForUser"></InputTextArea>
+        </div>
+        <div class="mt-2">
+            <label for="notifyOnUpload">Notify me when user uploads files: </label>
+            <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="CreateLinkModel.NotifyOnUpload"></InputCheckbox>
         </div>
         <button class="btn btn-success mt-4 mx-auto" type="submit">Generate link</button>
     </div>
@@ -111,7 +115,7 @@
     private async Task CreateLink()
     {
         var user = await GetUserIdentity();
-        LinkForUpload = await LinksService.GetLinkForRequest(user, CreateLinkModel.LinkName, CreateLinkModel.SendTo, CreateLinkModel.MessageForUser);
+        LinkForUpload = await LinksService.GenerateRequestAndSendEmail(user, CreateLinkModel);
         MyLinks = await LinksService.GetLinksForUser(user);
 
         CreateLinkModel = new RequestLinkModel();

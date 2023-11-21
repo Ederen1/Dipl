@@ -14,4 +14,6 @@ public class Link
     public required Guid CreatedById { get; set; }
     public virtual User CreatedBy { get; set; } = null!;
     public virtual ICollection<Group> Groups { get; set; } = new List<Group>();
+    public bool NotifyOnUpload { get; set; }
+    public bool LinkClosed { get; set; }
 }

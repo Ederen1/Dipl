@@ -25,6 +25,11 @@
             <a href="@(Navigator.BaseUri)link/@Link!.LinkId">@(Navigator.BaseUri)link/@Link.LinkId</a>
         </div>
     }
+    
+    @if (Type == UploadType.Requested && !Link!.LinkClosed)
+    {
+        <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
+    }
 
     <div class="m-5 position-relative">
         <div class="fileText">
@@ -67,7 +72,6 @@
                         {
                             <progress class="progress" max="100" value="@file.Progress"></progress>
                         }
-
                     </td>
                 </tr>
             }
@@ -196,4 +200,12 @@
     {
         file.CancellationTokenSource.Cancel();
     }
+
+    private async Task CloseLink()
+    {
+        var user = await GetUserIdentity();
+        await LinksService.CloseLink(Link!, user?.UserName);
+        StateHasChanged();
+    }
+
 }
