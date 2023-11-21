@@ -81,11 +81,21 @@
     public UploadType Type { get; set; } = UploadType.Upload;
 
     [Parameter]
-    public Link? Link { get; set; }
-    string FolderName { get; set; } = "";
-    List<UploadFileModel> Files { get; set; } = new();
+    public Guid? LinkId { get; set; }
 
-    private async Task FileDrop(InputFileChangeEventArgs obj)
+    private Link? Link { get; set; }
+
+    string FolderName { get; set; } = "";
+    List<UploadFileModel> Files { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (LinkId is not null){
+            Link = await LinksService.Get(LinkId.Value);
+        }
+    }
+
+        private async Task FileDrop(InputFileChangeEventArgs obj)
     {
         var files = obj.GetMultipleFiles(10000);
         var userInfo = await GetUserIdentity();

@@ -43,13 +43,13 @@ public class LinksService(AppDbContext dbContext, IStoreService fileStoreService
         return await fileStoreService.GetFile($"{link.Folder}/{fileName}");
     }
 
-    public async Task<Link> GetLinkForUpload(User user)
+    public async Task<Link> GetLinkForRequest(User user)
     {
         var link = new Link
         {
             CreatedById = user.UserId,
-            LinkType = LinkTypeEnum.Upload,
-            Folder = $"{user.UserId}/{Guid.NewGuid()}"
+            LinkType = LinkTypeEnum.Request,
+            Folder = $"{user.UserId}/{Guid.NewGuid()}",
         };
 
         await dbContext.Links.AddAsync(link);

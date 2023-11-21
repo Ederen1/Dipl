@@ -8,8 +8,7 @@
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @attribute [Authorize]
 
-<h3>@(Navigator.BaseUri)link/@LinkForUpload.LinkId</h3>
-<Upload Type="UploadType.Requested" Link="LinkForUpload"></Upload>
+<h3>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</h3>
 @code {
     Dipl.Business.Entities.Link LinkForUpload { get; set; } = null!;
 
@@ -26,6 +25,6 @@
     protected override async Task OnInitializedAsync()
     {
         var user = await GetUserIdentity();
-        LinkForUpload = await LinksService.GetLinkForUpload(user);
+        LinkForUpload = await LinksService.GetLinkForRequest(user);
     }
 }

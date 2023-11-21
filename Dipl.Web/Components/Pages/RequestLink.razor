@@ -1,0 +1,17 @@
+@page "/link/request/{linkId:guid}"
+@using Dipl.Web.Components.Enums
+@using Dipl.Business.Services
+@inject LinksService LinksService
+
+<Upload Type="UploadType.Requested" LinkId="LinkId"></Upload>
+
+@code {
+    [Parameter]
+    public Guid LinkId { get; set; }
+
+    Dipl.Business.Entities.Link LinkForUpload { get; set; } = null!;
+    protected override async Task OnInitializedAsync()
+    {
+        LinkForUpload = await LinksService.Get(LinkId);
+    }
+}
