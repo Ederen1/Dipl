@@ -1,13 +1,8 @@
-using System.IO.Compression;
-using System.Security.Claims;
 using Dipl.Business;
-using Dipl.Business.Extensions;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
+using Dipl.Web.Endpoints;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,18 +20,6 @@ builder.Services.AddAuthentication("Cookies")
         opt.ClientId = configuration["Microsoft:Id"]!;
         opt.ClientSecret = configuration["Microsoft:Secret"]!;
     });
-
-builder.Services.AddAuthorizationBuilder()
-    .AddDefaultPolicy("InAllowedDomains",
-        policy => policy.Requirements.Add(new AssertionRequirement((ctx) =>
-        {
-            var user = ctx.User.FindFirst(ClaimTypes.Email)?.Value;
-
-            if (user == null)
-                return false;
-
-            return configuration.GetSection("AllowedDomains").Get<string[]>()!.Any(x => user.EndsWith(x));
-        })));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -58,12 +41,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
 app.UseAntiforgery();
-
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseDomainWhitelist();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
@@ -76,55 +59,7 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
 }
 
-app.MapGet("/Account/Login", (string returnUrl) =>
-{
-    var props = new AuthenticationProperties
-    {
-        RedirectUri = "/Account/LoginCallback?ReturnUrl=" + returnUrl
-    };
-
-    return Results.Challenge(props, new[] { MicrosoftAccountDefaults.AuthenticationScheme });
-});
-
-app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService userService, string returnUrl) =>
-{
-    var identity = context.User.Identity as ClaimsIdentity;
-    if (identity == null || !identity.IsAuthenticated)
-        return Results.Redirect("/");
-
-    var user = identity.MapToUser();
-    await userService.CreateIfNotExists(user);
-
-    return Results.Redirect(returnUrl);
-});
-
-app.MapGet("/Account/Logout", async (HttpContext httpContext) =>
-{
-    await httpContext.SignOutAsync();
-    return Results.Redirect("/");
-});
-
-app.MapGet("/download/{linkId:guid}", async (Guid linkId, LinksService linksService, HttpContext context) =>
-{
-    var files = await linksService.EnumerateLink(linkId);
-
-    // TODO: maybe estimate final zip size?
-    // context.Response.Headers.ContentLength = files.Sum(x => x.Size);
-
-    using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
-    foreach (var file in files)
-    {
-        using var fs = File.OpenRead(file.Path);
-        var entry = archive.CreateEntry(file.Name, CompressionLevel.NoCompression);
-        using var entryStream = entry.Open();
-        await fs.CopyToAsync(entryStream);
-    }
-});
-
-app.MapGet("/download/{linkId:guid}/{fileName}", async (Guid linkId, string fileName, LinksService linksService) =>
-{
-    var file = await linksService.GetFile(linkId, fileName);
-    return Results.File(file, "application/octet-stream");
-});
+app.MapLoginEndpoints();
+app.MapDownloadEndpoints();
 
 app.Run();

@@ -16,8 +16,8 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         else
             createdBy = await dbContext.Users.FindAsync(user.UserId) ?? throw new Exception("User not found");
 
-        var link = new Link { Folder = folderPath, CreatedById = createdBy.UserId };
-        link.Groups.Add(await dbContext.Groups.FindAsync(Group.GuestGrupId) ?? throw new Exception("Guest group not found"));
+        var guestPermission = await dbContext.Permissions.FindAsync(Permission.GuestPermissionId);
+        var link = new Link { Folder = folderPath, CreatedById = createdBy.UserId, Permission = guestPermission!};
 
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
@@ -55,6 +55,7 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
             Folder = $"{user.UserId}/{request.LinkName}",
             Message = request.MessageForUser,
             NotifyOnUpload = request.NotifyOnUpload,
+            Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!
         };
 
         await fileStoreService.CreateFolder(link.Folder);
