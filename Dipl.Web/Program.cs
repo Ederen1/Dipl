@@ -76,26 +76,26 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
 }
 
-app.MapGet("/Account/Login", () =>
+app.MapGet("/Account/Login", (string returnUrl) =>
 {
     var props = new AuthenticationProperties
     {
-        RedirectUri = "/Account/LoginCallback"
+        RedirectUri = "/Account/LoginCallback?ReturnUrl=" + returnUrl
     };
 
     return Results.Challenge(props, new[] { MicrosoftAccountDefaults.AuthenticationScheme });
 });
 
-app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService _userService) =>
+app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService userService, string returnUrl) =>
 {
     var identity = context.User.Identity as ClaimsIdentity;
     if (identity == null || !identity.IsAuthenticated)
         return Results.Redirect("/");
 
     var user = identity.MapToUser();
-    await _userService.CreateIfNotExists(user);
+    await userService.CreateIfNotExists(user);
 
-    return Results.Redirect("/");
+    return Results.Redirect(returnUrl);
 });
 
 app.MapGet("/Account/Logout", async (HttpContext httpContext) =>

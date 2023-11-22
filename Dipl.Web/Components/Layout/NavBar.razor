@@ -8,7 +8,7 @@
             <a class="logout" href="/Account/Logout">Logout</a>
         </Authorized>
         <NotAuthorized>
-            <a class="login" href="/Account/Login">Login</a>
+            <a class="login" href="/Account/Login?returnUrl=@NavigationManager.Uri">Login</a>
         </NotAuthorized>
     </AuthorizeView>
 </nav>
