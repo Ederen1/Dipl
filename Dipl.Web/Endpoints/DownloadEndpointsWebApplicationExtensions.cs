@@ -1,5 +1,8 @@
 using System.IO.Compression;
+using Dipl.Business;
 using Dipl.Business.Services;
+using Dipl.Business.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Web.Endpoints;
 
@@ -7,9 +10,10 @@ public static class DownloadEndpointsWebApplicationExtensions
 {
     public static void MapDownloadEndpoints(this WebApplication app)
     {
-        app.MapGet("/download/{linkId:guid}", async (Guid linkId, LinksService linksService, HttpContext context) =>
+        app.MapGet("/download/{linkId:guid}", async (Guid linkId, AppDbContext dbContext, IStoreService storeService, HttpContext context) =>
         {
-            var files = await linksService.EnumerateLink(linkId);
+            var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+            var files = await storeService.List(link.Folder);
 
             // TODO: maybe estimate final zip size?
             // context.Response.Headers.ContentLength = files.Sum(x => x.Size);

@@ -29,17 +29,7 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
     {
         return await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
     }
-
-    public async Task<Common.Types.FileInfo[]> EnumerateLink(Guid linkId)
-    {
-        return await EnumerateLink(await Get(linkId));
-    }
-
-    public Task<Common.Types.FileInfo[]> EnumerateLink(Link link)
-    {
-        return fileStoreService.List(link.Folder);
-    }
-
+    
     public async Task<Stream> GetFile(Guid linkId, string fileName)
     {
         var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
@@ -52,7 +42,8 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         {
             CreatedById = user.UserId,
             LinkType = LinkTypeEnum.Request,
-            Folder = $"{user.UserId}/{request.LinkName}",
+            Folder = $"{user.UserId}/{Guid.NewGuid()}",
+            LinkName = request.LinkName,
             Message = request.MessageForUser,
             NotifyOnUpload = request.NotifyOnUpload,
             Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!
@@ -82,15 +73,22 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
 
     public async Task DeleteLink(Guid linkId)
     {
-        var cached = await dbContext.Links.FindAsync(linkId);
-        if (cached == null)
+        var inDb = await dbContext.Links.FindAsync(linkId);
+        if (inDb == null)
             throw new Exception("Internal error");
         
-        await fileStoreService.DeleteFolder(cached.Folder, true);
-        dbContext.Links.Remove(cached);
+        await fileStoreService.DeleteFolder(inDb.Folder, true);
+        dbContext.Links.Remove(inDb);
         await dbContext.SaveChangesAsync();
     }
 
+    public async Task CloseLink(Guid linkId, string? uploader)
+    {
+        var link = await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
+        
+        await CloseLink(link, uploader);
+    }
+    
     public async Task CloseLink(Link link, string? uploader)
     {
         link.LinkClosed = true;
@@ -98,5 +96,35 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         
         if (link.NotifyOnUpload)
             await emailSenderService.NotifyUserUploaded(link, uploader);
+    }
+
+    public async Task CreateTemporaryLink(Guid linkId, User? user)
+    {
+        var linkFolder = (user != null ? user.UserId.ToString() : Guid.NewGuid().ToString()) + "/" + Guid.NewGuid();
+        var permission = await dbContext.Permissions.FindAsync(Permission.GuestPermissionId);
+        var link = new Link
+        {
+            LinkId = linkId,
+            LinkType = LinkTypeEnum.Temporary,
+            Permission = permission!,
+            Folder = linkFolder,
+            CreatedById = user?.UserId ?? User.GuestUserId
+        };
+        
+        await fileStoreService.CreateFolder(linkFolder);
+        await dbContext.Links.AddAsync(link);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task UpdateLink(Guid linkId, UploadLinkModel model)
+    {
+        var inDb = await dbContext.Links.FindAsync(linkId);
+        if (inDb == null)
+            throw new Exception("Link not found");
+        
+        inDb.Message = model.MessageForUser;
+        inDb.NotifyOnUpload = model.NotifyOnUpload;
+        inDb.LinkName = model.LinkName;
+        await dbContext.SaveChangesAsync();
     }
 }

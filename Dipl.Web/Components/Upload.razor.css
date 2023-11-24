@@ -1,6 +1,5 @@
 ﻿::deep .fileDrop {
     height: 150px;
-    
     border: 2px dashed black !important;
     font-size: 2rem;
     color: rgba(0, 0, 0, 0) !important;

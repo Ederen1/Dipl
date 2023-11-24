@@ -1,6 +1,10 @@
 @page "/link/{linkId:guid}"
 @using Dipl.Business.Services;
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Business
 @inject LinksService LinksService
+@inject IStoreService StoreService
+@inject AppDbContext DbContext
 
 <div class="container">
     @if (Files.Length == 1)
@@ -36,16 +40,17 @@
     [Parameter]
     public Guid LinkId { get; set; }
 
-    public Business.Entities.Link? FullLink { get; set; }
+    private Business.Entities.Link? FullLink { get; set; }
 
-    public Dipl.Common.Types.FileInfo[] Files { get; set; } = Array.Empty<Dipl.Common.Types.FileInfo>();
+    private Dipl.Common.Types.FileInfo[] Files { get; set; } = Array.Empty<Dipl.Common.Types.FileInfo>();
+    
     protected override async Task OnInitializedAsync()
     {
-        FullLink = await LinksService.Get(LinkId);
-        Files = await LinksService.EnumerateLink(FullLink);
+        FullLink = await DbContext.Links.FindAsync(LinkId) ?? throw new Exception("Link not found");
+        Files = await StoreService.List(FullLink!.Folder);
     }
 
-    public string GetFolderName()
+    private string GetFolderName()
     {
         return FullLink!.Folder.Split('/').Last();
     }

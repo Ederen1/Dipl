@@ -13,19 +13,6 @@
 @rendermode RenderMode.InteractiveServer
 
 <div class="container">
-    @if (Type == UploadType.Upload)
-    {
-        <input type="text" placeholder="Folder name... (optional)" @bind="FolderName">
-    }
-
-    @if (CanShowUploadLink())
-    {
-        <div class="mt-2">
-            <h3>Download link: </h3>
-            <a href="@(Navigator.BaseUri)link/@Link!.LinkId">@(Navigator.BaseUri)link/@Link.LinkId</a>
-        </div>
-    }
-    
     @if (Type == UploadType.Requested && !Link!.LinkClosed)
     {
         <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
@@ -41,51 +28,49 @@
 
     <table class="table table-sm table-striped">
         <thead>
-            <tr>
-                <th>Name</th>
-                <th>Remove</th>
-                <th>Done</th>
-            </tr>
+        <tr>
+            <th>Name</th>
+            <th>Remove</th>
+            <th>Done</th>
+        </tr>
         </thead>
         <tbody>
-            @foreach (var file in Files)
-            {
-                <tr>
-                    <td>@file.Name</td>
-                    <td>
-                        @if (!file.Done)
-                        {
-                            <button class="btn btn-danger" @onclick="() => CancelUpload(file)">Cancel</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
-                        }
+        @foreach (var file in Files)
+        {
+            <tr>
+                <td>@file.Name</td>
+                <td>
+                    @if (!file.Done)
+                    {
+                        <button class="btn btn-danger" @onclick="() => CancelUpload(file)">Cancel</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
+                    }
 
-                    </td>
-                    <td>
-                        @if (file.Done)
-                        {
-                            <div class="text-success">Done!</div>
-                        }
-                        else
-                        {
-                            <progress class="progress" max="100" value="@file.Progress"></progress>
-                        }
-                    </td>
-                </tr>
-            }
+                </td>
+                <td>
+                    @if (file.Done)
+                    {
+                        <div class="text-success">Done!</div>
+                    }
+                    else
+                    {
+                        <progress class="progress" max="100" value="@file.Progress"></progress>
+                    }
+                </td>
+            </tr>
+        }
         </tbody>
     </table>
 
 </div>
 
 @code {
-    [Parameter]
-    public UploadType Type { get; set; } = UploadType.Upload;
-
-    [Parameter]
-    public Guid? LinkId { get; set; }
+    [Parameter] public UploadType Type { get; set; } = UploadType.Upload;
+    [Parameter] public Guid LinkId { get; set; }
+    [Parameter] public EventCallback OnFileUploaded { get; set; }
 
     private Link? Link { get; set; }
 
@@ -94,38 +79,36 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (LinkId is not null){
-            Link = await LinksService.Get(LinkId.Value);
-        }
+        Link = await LinksService.Get(LinkId);
     }
 
     private bool _uploading = false;
-    
+
     private async Task FileDrop(InputFileChangeEventArgs obj)
     {
         var files = obj.GetMultipleFiles(10000);
-        var userInfo = await GetUserIdentity();
-
+    
         AddFilesToList(files);
-        await SetupFolderLazy(userInfo);
         _uploading = true;
+        await OnFileUploaded.InvokeAsync();
         foreach (var file in Files)
         {
             if (file.Done)
                 continue;
-            
+
             var token = file.CancellationTokenSource.Token;
 
             try
             {
                 await using var stream = file.OpenReadStream(53_687_091_200, token);
-                await FileManager.UploadFile(Link!.Folder, file.Name, stream, (progress) =>
+                await FileManager.UploadFile(Link!.Folder, file.Name, stream, progress =>
                 {
                     var oldProgress = file.Progress;
                     file.Progress = (int)(progress * 100 / stream.Length);
-                    
-                    if (oldProgress != file.Progress){}
+
+                    if (oldProgress != file.Progress)
                         StateHasChanged();
+                    
                 }, token);
             }
             catch (OperationCanceledException)
@@ -133,25 +116,12 @@
                 await RemoveFromList(file);
                 StateHasChanged();
                 continue;
-            };
+            }
 
             file.Progress = 100;
         }
 
         _uploading = false;
-    }
-
-    private async Task SetupFolderLazy(User? userInfo)
-    {
-        if (Link is not null)
-        {
-            await FileManager.CreateFolder(Link.Folder);
-        }
-        else
-        {
-            var uploadFolder = await FileManager.SetupFolderForUpload(FolderName, userInfo);
-            Link = await LinksService.GenerateLink(uploadFolder, userInfo);    
-        }
     }
 
     private void AddFilesToList(IEnumerable<IBrowserFile> files)
@@ -162,12 +132,12 @@
                 continue; // TODO: Show possibility to replace file
 
             Files.Add(new UploadFileModel
-                {
-                    Name = file.Name,
-                    Size = file.Size,
-                    OpenReadStream = file.OpenReadStream,
-                    CancellationTokenSource = new CancellationTokenSource()
-                });
+            {
+                Name = file.Name,
+                Size = file.Size,
+                OpenReadStream = file.OpenReadStream,
+                CancellationTokenSource = new CancellationTokenSource()
+            });
         }
     }
 
@@ -181,21 +151,16 @@
         return identity.MapToUser();
     }
 
-
     private async Task RemoveFromList(UploadFileModel file)
     {
         if (file.Done)
         {
             await FileManager.DeleteFile(Link!.Folder, file.Name);
         }
+
         Files.Remove(file);
     }
-
-    private bool CanShowUploadLink()
-    {
-        return Type != UploadType.Requested && Link is not null && Files.Any() && Files.All(file => file.Done);
-    }
-
+    
     private void CancelUpload(UploadFileModel file)
     {
         file.CancellationTokenSource.Cancel();

@@ -16,4 +16,6 @@ public class Link
     public virtual required Permission Permission { get; set; }
     public bool NotifyOnUpload { get; set; }
     public bool LinkClosed { get; set; }
+    [MaxLength(200)]
+    public string? LinkName { get; set; }
 }
