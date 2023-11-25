@@ -116,7 +116,7 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpdateLink(Guid linkId, UploadLinkModel model)
+    public async Task UpdateAndCloseLink(Guid linkId, UploadLinkModel model, User? user)
     {
         var inDb = await dbContext.Links.FindAsync(linkId);
         if (inDb == null)
@@ -125,6 +125,8 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         inDb.Message = model.MessageForUser;
         inDb.NotifyOnUpload = model.NotifyOnUpload;
         inDb.LinkName = model.LinkName;
+        inDb.LinkClosed = true;
+        emailSenderService.NotifyUploadForUser(model);
         await dbContext.SaveChangesAsync();
     }
 }

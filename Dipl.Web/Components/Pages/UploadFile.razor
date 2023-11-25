@@ -11,7 +11,7 @@
 
 @page "/upload"
 
-@if (FileWasUploaded)
+@if (LinkClosed)
 {
     <div class="mt-2 container">
         <h3>Copy link: </h3>
@@ -19,41 +19,53 @@
     </div>
 }
 
-<EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink">
-    <DataAnnotationsValidator/>
-    <div class="form-group">
-        <div>
-            <label for="sendToEmails">Send to: </label>
-            <InputText class="form-control" id="sendToEmails" @bind-Value="Model.SendToSeparatedByCommas"></InputText>
-            <ValidationMessage For="() => Model.SendToSeparatedByCommas"/>
+@if (!LinkClosed)
+{
+    <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink">
+        <DataAnnotationsValidator/>
+        <div class="form-group">
+            <div>
+                <label for="sendToEmails">Send to: </label>
+                <InputText class="form-control" id="sendToEmails" @bind-Value="Model.SendToSeparatedByCommas"></InputText>
+                <ValidationMessage For="() => Model.SendToSeparatedByCommas"/>
+            </div>
+            <div>
+                <label for="linkName">Link name: </label>
+                <InputText class="form-control" id="linkName" @bind-Value="Model.LinkName"></InputText>
+                <ValidationMessage For="() => Model.LinkName"/>
+            </div>
+            <div>
+                <label for="messageForUser">Message for user: </label>
+                <InputTextArea class="form-control" id="messageForUser" @bind-Value="Model.MessageForUser"></InputTextArea>
+            </div>
+            @if (_user is not null)
+            {
+                <div class="mt-2">
+                    <label for="notifyOnUpload">Notify me when user uploads files: </label>
+                    <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="Model.NotifyOnUpload"></InputCheckbox>
+                </div>
+            }
+            <button class="btn btn-success mt-4 mx-auto" type="submit">Confirm Upload</button>
+            @if (FileWasNotUploadedError)
+            {
+                <p class="text-danger">No file uploaded</p>
+            }
+            <p></p>
         </div>
-        <div>
-            <label for="linkName">Link name: </label>
-            <InputText class="form-control" id="linkName" @bind-Value="Model.LinkName"></InputText>
-            <ValidationMessage For="() => Model.LinkName"/>
-        </div>
-        <div>
-            <label for="messageForUser">Message for user: </label>
-            <InputTextArea class="form-control" id="messageForUser" @bind-Value="Model.MessageForUser"></InputTextArea>
-        </div>
-        @if (_user is not null)
-        {
-            <div class="mt-2">
-                <label for="notifyOnUpload">Notify me when user uploads files: </label>
-                <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="Model.NotifyOnUpload"></InputCheckbox>
-            </div>    
-        }
-        <button class="btn btn-success mt-4 mx-auto" type="submit">Save</button>
-    </div>
-</EditForm>
+    </EditForm>
+}
 
-<Upload LinkId="LinkId" Type="@(UploadType.Upload)" OnFileUploaded="() => FileWasUploaded = true"></Upload>
+<Upload LinkId="LinkId" Type="@(UploadType.Upload)" OnFileUploaded="() => { FileWasUploaded = true; FileWasNotUploadedError = false; }" @ref="_upload"></Upload>
 
 @code {
     private User? _user;
     private UploadLinkModel Model { get; set; } = new();
     private Guid LinkId { get; set; } = Guid.NewGuid();
     private bool FileWasUploaded { get; set; }
+    private bool LinkClosed { get; set; }
+    public bool FileWasNotUploadedError { get; set; }
+
+    private Upload _upload = null!;
 
     private async Task<User?> GetUserIdentity()
     {
@@ -64,15 +76,24 @@
 
         return identity.MapToUser();
     }
-    
+
     protected override async Task OnInitializedAsync()
     {
         _user = await GetUserIdentity();
         await LinksService.CreateTemporaryLink(LinkId, _user);
     }
 
-    private Task UpdateLink()
+    private async Task UpdateLink()
     {
-        return LinksService.UpdateLink(LinkId, Model);
+        if (!FileWasUploaded)
+        {
+            FileWasNotUploadedError = true;
+            return;
+        }
+
+        await LinksService.UpdateAndCloseLink(LinkId, Model, _user);
+        await _upload.Reload();
+        LinkClosed = true;
     }
+
 }

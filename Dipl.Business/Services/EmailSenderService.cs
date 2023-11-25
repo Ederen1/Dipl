@@ -89,4 +89,42 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
             logger.LogError("Unable to send email to {receiver}", link.CreatedBy.Email);
         }
     }
+
+    public async Task NotifyUploadForUser(UploadLinkModel upload, Link link, string? uploader)
+    {
+        var userMessage = "User";
+        if (uploader != null)
+            userMessage += $" {uploader}";
+
+        userMessage = WebUtility.HtmlEncode(userMessage);
+        
+        var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
+
+        var uploaderMessage = uploader != null ? $"<h2>Uploader: {uploader}</h2>" : "";
+        uploaderMessage = WebUtility.HtmlEncode(uploaderMessage);
+        var formattedBody = $"""
+                             {uploaderMessage}
+                             <b>Files uploaded:</b>
+                             <ul>
+                                 {string.Join(string.Empty, listOfFiles.Select(f => $"<li>{WebUtility.HtmlEncode(f)}</li>"))}
+                             </ul>
+                             """;
+        
+        var email = new MailMessage
+        {
+            From = Sender,
+            To = { link.CreatedBy.Email },
+            Subject = $"{userMessage} uploaded files to {WebUtility.HtmlEncode(link.Folder.Split("/").Last())}",
+            Body = formattedBody,
+            IsBodyHtml = true,
+        };
+        try
+        {
+            await smtpClient.SendMailAsync(email);
+        }
+        catch
+        {
+            logger.LogError("Unable to send email to {receiver}", link.CreatedBy.Email);
+        }
+    }
 }

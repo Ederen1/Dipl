@@ -18,13 +18,16 @@
         <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
     }
 
-    <div class="m-5 position-relative">
-        <div class="fileText">
-            <h2>Drop files to upload.</h2>
+    @if (Link?.LinkClosed == false)
+    {
+        <div class="m-5 position-relative">
+            <div class="fileText">
+                <h2>Drop files to upload.</h2>
+            </div>
+            <InputFile class="@($"fileDrop btn btn-light w-100 {(_uploading ? "disabled" : "")}")" OnChange="FileDrop" multiple>
+            </InputFile>
         </div>
-        <InputFile class="@($"fileDrop btn btn-light w-100 {(_uploading ? "disabled" : "")}")" OnChange="FileDrop" multiple>
-        </InputFile>
-    </div>
+    }
 
     <table class="table table-sm table-striped">
         <thead>
@@ -40,15 +43,17 @@
             <tr>
                 <td>@file.Name</td>
                 <td>
-                    @if (!file.Done)
+                    @if (Link?.LinkClosed == false)
                     {
-                        <button class="btn btn-danger" @onclick="() => CancelUpload(file)">Cancel</button>
+                        @if (!file.Done)
+                        {
+                            <button class="btn btn-danger" @onclick="() => CancelUpload(file)">Cancel</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
+                        }
                     }
-                    else
-                    {
-                        <button class="btn btn-danger" @onclick="() => RemoveFromList(file)">Remove</button>
-                    }
-
                 </td>
                 <td>
                     @if (file.Done)
@@ -82,12 +87,17 @@
         Link = await LinksService.Get(LinkId);
     }
 
+    public async Task Reload()
+    {
+        Link = await LinksService.Get(LinkId);
+    }
+
     private bool _uploading = false;
 
     private async Task FileDrop(InputFileChangeEventArgs obj)
     {
         var files = obj.GetMultipleFiles(10000);
-    
+
         AddFilesToList(files);
         _uploading = true;
         await OnFileUploaded.InvokeAsync();
@@ -108,7 +118,6 @@
 
                     if (oldProgress != file.Progress)
                         StateHasChanged();
-                    
                 }, token);
             }
             catch (OperationCanceledException)
@@ -160,7 +169,7 @@
 
         Files.Remove(file);
     }
-    
+
     private void CancelUpload(UploadFileModel file)
     {
         file.CancellationTokenSource.Cancel();
