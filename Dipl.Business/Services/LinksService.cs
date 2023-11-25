@@ -1,9 +1,8 @@
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
-using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.AspNetCore.Components;
 namespace Dipl.Business.Services;
 
 public class LinksService(AppDbContext dbContext, EmailSenderService emailSenderService, NavigationManager navigationManager, IStoreService fileStoreService)
@@ -126,7 +125,7 @@ public class LinksService(AppDbContext dbContext, EmailSenderService emailSender
         inDb.NotifyOnUpload = model.NotifyOnUpload;
         inDb.LinkName = model.LinkName;
         inDb.LinkClosed = true;
-        emailSenderService.NotifyUploadForUser(model);
+        await emailSenderService.NotifyUploadForUser(inDb, model, user?.UserName);
         await dbContext.SaveChangesAsync();
     }
 }

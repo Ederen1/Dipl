@@ -24,6 +24,14 @@
     <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink">
         <DataAnnotationsValidator/>
         <div class="form-group">
+            @if(_user is null)
+            {
+                <div>
+                    <label for="sender">Sender: </label>
+                    <InputText class="form-control" id="sender" @bind-Value="Model.Sender"></InputText>
+                    <ValidationMessage For="() => Model.Sender"/>
+                </div>
+            }
             <div>
                 <label for="sendToEmails">Send to: </label>
                 <InputText class="form-control" id="sendToEmails" @bind-Value="Model.SendToSeparatedByCommas"></InputText>
@@ -38,13 +46,6 @@
                 <label for="messageForUser">Message for user: </label>
                 <InputTextArea class="form-control" id="messageForUser" @bind-Value="Model.MessageForUser"></InputTextArea>
             </div>
-            @if (_user is not null)
-            {
-                <div class="mt-2">
-                    <label for="notifyOnUpload">Notify me when user uploads files: </label>
-                    <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="Model.NotifyOnUpload"></InputCheckbox>
-                </div>
-            }
             <button class="btn btn-success mt-4 mx-auto" type="submit">Confirm Upload</button>
             @if (FileWasNotUploadedError)
             {
@@ -91,9 +92,9 @@
             return;
         }
 
+        LinkClosed = true;
         await LinksService.UpdateAndCloseLink(LinkId, Model, _user);
         await _upload.Reload();
-        LinkClosed = true;
     }
 
 }

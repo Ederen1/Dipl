@@ -3,12 +3,13 @@ using System.Net.Mail;
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Dipl.Business.Services;
 
-public class EmailSenderService(IConfiguration configuration, ILogger<EmailSenderService> logger, SmtpClient smtpClient, IStoreService storeService)
+public class EmailSenderService(IConfiguration configuration, ILogger<EmailSenderService> logger, SmtpClient smtpClient, IStoreService storeService, NavigationManager navigationManager)
 {
     private readonly string _domain = configuration["Domain"]!;
     private readonly string _notifySender = configuration["NotifySenderName"]!;
@@ -76,7 +77,7 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         {
             From = Sender,
             To = { link.CreatedBy.Email },
-            Subject = $"{userMessage} uploaded files to {WebUtility.HtmlEncode(link.Folder.Split("/").Last())}",
+            Subject = $"{userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
@@ -90,34 +91,35 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         }
     }
 
-    public async Task NotifyUploadForUser(UploadLinkModel upload, Link link, string? uploader)
+    public async Task NotifyUploadForUser(Link link, UploadLinkModel model, string? uploader)
     {
-        var userMessage = "User";
-        if (uploader != null)
-            userMessage += $" {uploader}";
-
-        userMessage = WebUtility.HtmlEncode(userMessage);
-        
+        var user = WebUtility.HtmlEncode(uploader ?? model.Sender)!;
         var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
-
-        var uploaderMessage = uploader != null ? $"<h2>Uploader: {uploader}</h2>" : "";
-        uploaderMessage = WebUtility.HtmlEncode(uploaderMessage);
+        
+        var message = WebUtility.HtmlEncode(model.MessageForUser);
+        var linkUrl = navigationManager.ToAbsoluteUri($"/link/{link.LinkId}");
+        var linkUrlEncoded = WebUtility.HtmlEncode(linkUrl.ToString());
         var formattedBody = $"""
-                             {uploaderMessage}
+                             <h1>Uploader: {user}</h1>
+                             <pre>{message}</pre>
                              <b>Files uploaded:</b>
                              <ul>
                                  {string.Join(string.Empty, listOfFiles.Select(f => $"<li>{WebUtility.HtmlEncode(f)}</li>"))}
                              </ul>
+                             <a href="{linkUrlEncoded}">Click here to download files</a>
                              """;
-        
+
         var email = new MailMessage
         {
             From = Sender,
-            To = { link.CreatedBy.Email },
-            Subject = $"{userMessage} uploaded files to {WebUtility.HtmlEncode(link.Folder.Split("/").Last())}",
+            Subject = $"{user} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
+        
+        foreach (var send in model.SendTo)
+            email.To.Add(send);
+        
         try
         {
             await smtpClient.SendMailAsync(email);
