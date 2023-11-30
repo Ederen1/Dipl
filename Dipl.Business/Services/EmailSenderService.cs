@@ -17,6 +17,9 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
 
     public async Task NotifyOfRequest(RequestLinkModel request, string requestingUserName, string linkUrl)
     {
+        if (request.SendTo.Length == 0)
+            return;
+        
         var requestingUsernameEncoded = WebUtility.HtmlEncode(requestingUserName);
         var linkNameEncoded = WebUtility.HtmlEncode(request.LinkName);
         // TODO: When we support html in message, we have to sanitize it in a different way
@@ -63,8 +66,7 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         
         var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
 
-        var uploaderMessage = uploader != null ? $"<h2>Uploader: {uploader}</h2>" : "";
-        uploaderMessage = WebUtility.HtmlEncode(uploaderMessage);
+        var uploaderMessage = uploader != null ? $"<h2>Uploader: {WebUtility.HtmlEncode(uploader)}</h2>" : "";
         var formattedBody = $"""
                              {uploaderMessage}
                              <b>Files uploaded:</b>
