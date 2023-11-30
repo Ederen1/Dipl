@@ -13,14 +13,9 @@
 @rendermode RenderMode.InteractiveServer
 
 <div class="container">
-    @if (Type == UploadType.Requested && !Link!.LinkClosed)
-    {
-        <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
-    }
-
     @if (Link?.LinkClosed == false)
     {
-        <div class="m-5 position-relative">
+        <div class="my-4 position-relative">
             <div class="fileText">
                 <h2>Drop files to upload.</h2>
             </div>
@@ -29,6 +24,13 @@
         </div>
     }
 
+    @if (Type == UploadType.Requested && !Link!.LinkClosed)
+    {
+        <div class="my-4 d-flex justify-content-end">
+            <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
+        </div>
+    }
+    
     <table class="table table-sm table-striped">
         <thead>
         <tr>
@@ -69,7 +71,6 @@
         }
         </tbody>
     </table>
-
 </div>
 
 @code {

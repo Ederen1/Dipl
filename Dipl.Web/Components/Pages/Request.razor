@@ -9,13 +9,6 @@
 @attribute [Authorize]
 @rendermode RenderMode.InteractiveServer
 
-@if (LinkForUpload != null)
-{
-    <div class="container rounded p-3 mt-5 shadow-sm">
-        <h3>Link: </h3>
-        <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p>
-    </div>
-}
 <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink">
     <DataAnnotationsValidator/>
     <div class="form-group">
@@ -41,6 +34,13 @@
     </div>
 </EditForm>
 
+@if (LinkForUpload != null)
+{
+    <div class="container rounded p-3 mt-5 shadow-sm">
+        <h3>Link: </h3>
+        <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p>
+    </div>
+}
 <div class="container mt-5">
     <table class="table table-striped">
         <thead>
