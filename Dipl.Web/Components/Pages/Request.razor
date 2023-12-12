@@ -47,7 +47,7 @@
         <tr>
             <th>Link name</th>
             <th>Files uploaded</th>
-            <th>Accessed</th>
+            @* <th>Accessed</th> *@
             <th>Download</th>
             <th>Delete</th>
         </tr>
@@ -58,7 +58,7 @@
             <tr>
                 <td>@link.LinkName</td>
                 <td>@link.Files.Length</td>
-                <td>@link.LastAccessed</td>
+                @* <td>@link.LastAccessed</td> *@
                 <td>
                     @if (link.Files.Length == 1)
                     {

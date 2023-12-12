@@ -53,10 +53,10 @@ app.MapRazorComponents<App>()
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
-    await db.EnsureDeletedAsync();
-    await db.EnsureCreatedAsync();
-    await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
+    // var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
+    // await db.EnsureDeletedAsync();
+    // await db.EnsureCreatedAsync();
+    // await scope.ServiceProvider.GetService<InitializationService>()!.Initialize();
 }
 
 app.MapLoginEndpoints();

@@ -29,7 +29,6 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         var formattedBody = $"""
                              <h1>User: {requestingUsernameEncoded}</h1>
                              <p>Is requesting files for <b>{linkNameEncoded}</b></p>
-                             <br>
                              <p>Message from user:</p>
                              <p>{messageForUserEncoded}</p>
 
@@ -61,8 +60,6 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         var userMessage = "User";
         if (uploader != null)
             userMessage += $" {uploader}";
-
-        userMessage = WebUtility.HtmlEncode(userMessage);
         
         var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
 
@@ -73,13 +70,14 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
                              <ul>
                                  {string.Join(string.Empty, listOfFiles.Select(f => $"<li>{WebUtility.HtmlEncode(f)}</li>"))}
                              </ul>
+                             <a href="{navigationManager.ToAbsoluteUri($"/download/{link.LinkId}")}">Download files</a>
                              """;
         
         var email = new MailMessage
         {
             From = Sender,
             To = { link.CreatedBy.Email },
-            Subject = $"{userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
+            Subject = $"User {userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
@@ -114,7 +112,7 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         var email = new MailMessage
         {
             From = Sender,
-            Subject = $"{user} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
+            Subject = $"{uploader ?? model.Sender} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
