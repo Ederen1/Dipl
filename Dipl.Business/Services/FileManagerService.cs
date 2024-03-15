@@ -20,7 +20,10 @@ public class FileManagerService(IStoreService storeService)
         return fullFolderName;
     }
 
-    public async Task<string> GetFolderNameIfEmpty(string userOrTemporaryFolderName, string? folderName)
+    public async Task<string> GetFolderNameIfEmpty(
+        string userOrTemporaryFolderName,
+        string? folderName
+    )
     {
         if (!string.IsNullOrWhiteSpace(folderName))
         {
@@ -38,15 +41,25 @@ public class FileManagerService(IStoreService storeService)
                 return tryFoldername.ToString();
 
             tries--;
-
         } while (tries < maxTries);
 
         throw new Exception($"Random folder already exists, {maxTries} tries exhausted");
     }
 
-    public async Task UploadFile(string folderName, string fileName, Stream fileStream, Action<long> progress, CancellationToken cancellationToken = default)
+    public async Task UploadFile(
+        string folderName,
+        string fileName,
+        Stream fileStream,
+        Action<long> progress,
+        CancellationToken cancellationToken = default
+    )
     {
-        await storeService.InsertFile($"{folderName}/{fileName}", fileStream, progress, cancellationToken);
+        await storeService.InsertFile(
+            $"{folderName}/{fileName}",
+            fileStream,
+            progress,
+            cancellationToken
+        );
     }
 
     public async Task DeleteFile(string folder, string fileName)

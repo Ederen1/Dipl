@@ -9,11 +9,14 @@ var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
-builder.Services.AddAuthentication("Cookies")
-    .AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; })
+builder.Services
+    .AddAuthentication("Cookies")
+    .AddCookie(opt =>
+    {
+        opt.Cookie.Name = "AuthCookie";
+    })
     .AddMicrosoftAccount(opt =>
     {
         opt.SignInScheme = "Cookies";
@@ -48,8 +51,7 @@ app.UseAuthorization();
 
 app.UseDomainWhitelist();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 using (var scope = app.Services.CreateScope())
 {

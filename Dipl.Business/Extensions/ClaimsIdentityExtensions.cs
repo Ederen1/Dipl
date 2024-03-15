@@ -20,14 +20,17 @@ public static class ClaimsIdentityExtensions
 
     private static string GetEmail(ClaimsIdentity identity)
     {
-        var email = identity.FindFirst(ClaimTypes.Email) ?? throw new Exception("Email claim not found");
+        var email =
+            identity.FindFirst(ClaimTypes.Email) ?? throw new Exception("Email claim not found");
 
         return email.Value;
     }
 
     private static Guid GetUserId(ClaimsIdentity identity)
     {
-        var userId = identity.FindFirst(ClaimTypes.NameIdentifier) ?? throw new Exception("NameIdentifier claim not found");
+        var userId =
+            identity.FindFirst(ClaimTypes.NameIdentifier)
+            ?? throw new Exception("NameIdentifier claim not found");
 
         return Guid.Parse(userId.Value);
     }

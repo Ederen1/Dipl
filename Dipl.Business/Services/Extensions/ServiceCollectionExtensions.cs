@@ -17,7 +17,8 @@ public static class ServiceCollectionExtensions
         serviceCollection.AddScoped<EmailSenderService>();
         serviceCollection.AddScoped<SmtpClient>(sp =>
         {
-            var configuration = sp.GetService<IConfiguration>() ?? throw new Exception("Configuration not found");
+            var configuration =
+                sp.GetService<IConfiguration>() ?? throw new Exception("Configuration not found");
             var smtpHost = configuration["SMTPHost"]!;
             var smtpPort = int.Parse(configuration["SMTPPort"] ?? "25");
             var smtpUsername = configuration["SMTPUsername"];
@@ -32,10 +33,12 @@ public static class ServiceCollectionExtensions
                 Credentials = new NetworkCredential(smtpUsername, smtpPassword),
                 EnableSsl = smtpUseSsl
             };
-            
+
             return smtpClient;
         });
 
-        serviceCollection.AddScoped<IStoreService, FileStoreService>(_ => new FileStoreService("folder/"));
+        serviceCollection.AddScoped<IStoreService, FileStoreService>(
+            _ => new FileStoreService("folder/")
+        );
     }
 }

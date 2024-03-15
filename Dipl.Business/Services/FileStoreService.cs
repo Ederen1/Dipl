@@ -6,7 +6,12 @@ namespace Dipl.Business.Services;
 
 public class FileStoreService(string basePath) : IStoreService
 {
-    public async Task InsertFile(string filePath, Stream contents, Action<long> progress, CancellationToken cancellationToken = default)
+    public async Task InsertFile(
+        string filePath,
+        Stream contents,
+        Action<long> progress,
+        CancellationToken cancellationToken = default
+    )
     {
         var fullPath = basePath + filePath;
 
@@ -14,7 +19,10 @@ public class FileStoreService(string basePath) : IStoreService
 
         var buffer = new byte[1024 * 1024];
         int read = 0;
-        while (!cancellationToken.IsCancellationRequested && (read = await contents.ReadAsync(buffer, cancellationToken)) != 0)
+        while (
+            !cancellationToken.IsCancellationRequested
+            && (read = await contents.ReadAsync(buffer, cancellationToken)) != 0
+        )
         {
             await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
             progress(file.Length);
@@ -81,7 +89,9 @@ public class FileStoreService(string basePath) : IStoreService
     public Task<FileInfo[]> Search(string name)
     {
         var directory = new DirectoryInfo(basePath);
-        var found = directory.GetFileSystemInfos(name, SearchOption.AllDirectories).MapToFileInfos();
+        var found = directory
+            .GetFileSystemInfos(name, SearchOption.AllDirectories)
+            .MapToFileInfos();
 
         return Task.FromResult(found);
     }

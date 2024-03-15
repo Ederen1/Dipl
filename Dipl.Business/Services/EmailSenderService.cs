@@ -9,23 +9,33 @@ using Microsoft.Extensions.Logging;
 
 namespace Dipl.Business.Services;
 
-public class EmailSenderService(IConfiguration configuration, ILogger<EmailSenderService> logger, SmtpClient smtpClient, IStoreService storeService, NavigationManager navigationManager)
+public class EmailSenderService(
+    IConfiguration configuration,
+    ILogger<EmailSenderService> logger,
+    SmtpClient smtpClient,
+    IStoreService storeService,
+    NavigationManager navigationManager
+)
 {
     private readonly string _domain = configuration["Domain"]!;
     private readonly string _notifySender = configuration["NotifySenderName"]!;
     private MailAddress Sender => new($"{_notifySender}@{_domain}");
 
-    public async Task NotifyOfRequest(RequestLinkModel request, string requestingUserName, string linkUrl)
+    public async Task NotifyOfRequest(
+        RequestLinkModel request,
+        string requestingUserName,
+        string linkUrl
+    )
     {
         if (request.SendTo.Length == 0)
             return;
-        
+
         var requestingUsernameEncoded = WebUtility.HtmlEncode(requestingUserName);
         var linkNameEncoded = WebUtility.HtmlEncode(request.LinkName);
         // TODO: When we support html in message, we have to sanitize it in a different way
         var messageForUserEncoded = WebUtility.HtmlEncode(request.MessageForUser);
         var linkUrlEncoded = WebUtility.HtmlEncode(linkUrl);
-        
+
         var formattedBody = $"""
                              <h1>User: {requestingUsernameEncoded}</h1>
                              <p>Is requesting files for <b>{linkNameEncoded}</b></p>
@@ -60,10 +70,11 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         var userMessage = "User";
         if (uploader != null)
             userMessage += $" {uploader}";
-        
+
         var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
 
-        var uploaderMessage = uploader != null ? $"<h2>Uploader: {WebUtility.HtmlEncode(uploader)}</h2>" : "";
+        var uploaderMessage =
+            uploader != null ? $"<h2>Uploader: {WebUtility.HtmlEncode(uploader)}</h2>" : "";
         var formattedBody = $"""
                              {uploaderMessage}
                              <b>Files uploaded:</b>
@@ -72,12 +83,13 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
                              </ul>
                              <a href="{navigationManager.ToAbsoluteUri($"/download/{link.LinkId}")}">Download files</a>
                              """;
-        
+
         var email = new MailMessage
         {
             From = Sender,
             To = { link.CreatedBy.Email },
-            Subject = $"User {userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
+            Subject =
+                $"User {userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
@@ -95,7 +107,7 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
     {
         var user = WebUtility.HtmlEncode(uploader ?? model.Sender)!;
         var listOfFiles = (await storeService.List(link.Folder)).Select(f => f.Name);
-        
+
         var message = WebUtility.HtmlEncode(model.MessageForUser);
         var linkUrl = navigationManager.ToAbsoluteUri($"/link/{link.LinkId}");
         var linkUrlEncoded = WebUtility.HtmlEncode(linkUrl.ToString());
@@ -112,14 +124,15 @@ public class EmailSenderService(IConfiguration configuration, ILogger<EmailSende
         var email = new MailMessage
         {
             From = Sender,
-            Subject = $"{uploader ?? model.Sender} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
+            Subject =
+                $"{uploader ?? model.Sender} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
             IsBodyHtml = true,
         };
-        
+
         foreach (var send in model.SendTo)
             email.To.Add(send);
-        
+
         try
         {
             await smtpClient.SendMailAsync(email);
