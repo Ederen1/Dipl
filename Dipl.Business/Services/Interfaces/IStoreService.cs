@@ -10,6 +10,7 @@ public interface IStoreService
         Action<long> progress,
         CancellationToken cancellationToken = default
     );
+
     public Task CreateFolder(string name);
     public Task<bool> FolderExists(string name);
     public Task<Stream> GetFile(string name);

@@ -18,7 +18,7 @@ public class FileStoreService(string basePath) : IStoreService
         await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
 
         var buffer = new byte[1024 * 1024];
-        int read = 0;
+        var read = 0;
         while (
             !cancellationToken.IsCancellationRequested
             && (read = await contents.ReadAsync(buffer, cancellationToken)) != 0

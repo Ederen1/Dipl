@@ -49,7 +49,7 @@ public class EmailSenderService(
             From = Sender,
             Subject = $"Request for files from {requestingUserName}",
             Body = formattedBody,
-            IsBodyHtml = true,
+            IsBodyHtml = true
         };
 
         foreach (var receiver in request.SendTo)
@@ -91,7 +91,7 @@ public class EmailSenderService(
             Subject =
                 $"User {userMessage} uploaded files to {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
-            IsBodyHtml = true,
+            IsBodyHtml = true
         };
         try
         {
@@ -127,7 +127,7 @@ public class EmailSenderService(
             Subject =
                 $"{uploader ?? model.Sender} sent you files {WebUtility.HtmlEncode(link.LinkName)}",
             Body = formattedBody,
-            IsBodyHtml = true,
+            IsBodyHtml = true
         };
 
         foreach (var send in model.SendTo)

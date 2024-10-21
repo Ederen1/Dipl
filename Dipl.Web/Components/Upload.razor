@@ -1,11 +1,9 @@
-﻿@using Dipl.Business.Services
-@using System.Security.Claims
-@using Common.Types;
-@using Dipl.Web.Components.Enums;
-@using Common.Extensions;
-@using Dipl.Business.Models;
-@using Dipl.Business.Extensions;
-@using Business.Entities;
+﻿@using System.Security.Claims
+@using Dipl.Business.Entities
+@using Dipl.Business.Extensions
+@using Dipl.Business.Models
+@using Dipl.Business.Services
+@using Dipl.Web.Components.Enums
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject FileManagerService FileManager
@@ -30,7 +28,7 @@
             <button class="@((_uploading ? "disabled" : "") + " btn btn-success")" @onclick="CloseLink">Confirm upload</button>
         </div>
     }
-    
+
     <table class="table table-sm table-striped">
         <thead>
         <tr>

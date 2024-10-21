@@ -1,7 +1,8 @@
 @page "/link/{linkId:guid}"
-@using Dipl.Business.Services;
-@using Dipl.Business.Services.Interfaces
 @using Dipl.Business
+@using Dipl.Business.Services
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
 @inject LinksService LinksService
 @inject IStoreService StoreService
 @inject AppDbContext DbContext
@@ -49,12 +50,11 @@
 
 @code {
 
-    [Parameter]
-    public Guid LinkId { get; set; }
+    [Parameter] public Guid LinkId { get; set; }
 
     private Business.Entities.Link? FullLink { get; set; }
 
-    private Dipl.Common.Types.FileInfo[] Files { get; set; } = Array.Empty<Dipl.Common.Types.FileInfo>();
+    private FileInfo[] Files { get; set; } = Array.Empty<FileInfo>();
 
     protected override async Task OnInitializedAsync()
     {

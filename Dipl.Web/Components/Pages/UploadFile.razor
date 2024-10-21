@@ -1,15 +1,15 @@
-@using Dipl.Web.Components.Enums;
-@using Dipl.Business.Models
-@using Dipl.Business.Services
-@using Dipl.Business.Entities
-@using Dipl.Business.Extensions
-@using System.Security.Claims
 @inject LinksService LinksService
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject NavigationManager Navigator
 @rendermode RenderMode.InteractiveServer
 
 @page "/upload"
+@using System.Security.Claims
+@using Dipl.Business.Entities
+@using Dipl.Business.Extensions
+@using Dipl.Business.Models
+@using Dipl.Business.Services
+@using Dipl.Web.Components.Enums
 
 @if (LinkClosed)
 {
@@ -24,7 +24,7 @@
     <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink">
         <DataAnnotationsValidator/>
         <div class="form-group">
-            @if(_user is null)
+            @if (_user is null)
             {
                 <div>
                     <label for="sender">Sender: </label>
@@ -60,8 +60,8 @@
 
 @code {
     private User? _user;
-    private UploadLinkModel Model { get; set; } = new();
-    private Guid LinkId { get; set; } = Guid.NewGuid();
+    private UploadLinkModel Model { get; } = new();
+    private Guid LinkId { get; } = Guid.NewGuid();
     private bool FileWasUploaded { get; set; }
     private bool LinkClosed { get; set; }
     public bool FileWasNotUploadedError { get; set; }

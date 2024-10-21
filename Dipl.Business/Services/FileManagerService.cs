@@ -1,8 +1,5 @@
 ﻿using Dipl.Business.Entities;
-using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
-using Dipl.Common.Types;
-using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
@@ -25,10 +22,7 @@ public class FileManagerService(IStoreService storeService)
         string? folderName
     )
     {
-        if (!string.IsNullOrWhiteSpace(folderName))
-        {
-            return folderName;
-        }
+        if (!string.IsNullOrWhiteSpace(folderName)) return folderName;
 
         var maxTries = 10;
         var tries = 0;

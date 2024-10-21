@@ -2,7 +2,6 @@ using System.IO.Compression;
 using Dipl.Business;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Web.Endpoints;
 

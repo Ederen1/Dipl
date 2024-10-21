@@ -1,8 +1,9 @@
 ﻿@page "/request"
-@using Dipl.Business.Services
 @using System.Security.Claims
+@using Dipl.Business.Entities
 @using Dipl.Business.Extensions
 @using Dipl.Business.Models
+@using Dipl.Business.Services
 @inject LinksService LinksService
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
@@ -83,11 +84,11 @@
 </div>
 
 @code {
-    Dipl.Business.Entities.Link? LinkForUpload { get; set; }
+    Business.Entities.Link? LinkForUpload { get; set; }
     IEnumerable<LinkWithListedFiles> MyLinks { get; set; } = new List<LinkWithListedFiles>();
     RequestLinkModel CreateLinkModel { get; set; } = new();
 
-    private async Task<Business.Entities.User> GetUserIdentity()
+    private async Task<User> GetUserIdentity()
     {
         var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
 
