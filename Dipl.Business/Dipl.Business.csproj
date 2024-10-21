@@ -7,20 +7,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0-rc.2.23480.1"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="8.0.0-rc.2.23480.1"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.10" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Proxies" Version="8.0.10" />
         <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0"/>
     </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\Dipl.Common\Dipl.Common.csproj"/>
-        <PackageReference Include="Microsoft.AspNetCore.App"/>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Reference Include="Microsoft.AspNetCore.Components">
-            <HintPath>..\..\..\.nuget\packages\microsoft.aspnetcore.app.ref\8.0.0-rc.2.23480.2\ref\net8.0\Microsoft.AspNetCore.Components.dll</HintPath>
-        </Reference>
+
     </ItemGroup>
 
 </Project>
