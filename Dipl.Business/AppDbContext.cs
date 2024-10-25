@@ -21,7 +21,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         modelBuilder.Entity<Group>().HasData(new Group
         {
             GroupId = Group.GuestGrupId,
-            Name = "Guest",
+            Name = "Guest"
         });
 
         modelBuilder.Entity<Permission>().HasData(new Permission
@@ -36,7 +36,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         {
             UserId = User.GuestUserId,
             Email = "guest@example.com",
-            UserName = "Guest",
+            UserName = "Guest"
         });
 
         modelBuilder.Entity("GroupUser").HasData(new

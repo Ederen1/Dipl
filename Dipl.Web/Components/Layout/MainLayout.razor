@@ -1,6 +1,41 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="body">
-    <NavBar></NavBar>
-    @Body
-</div>
+@inject NavigationManager NavigationManager
+
+<Layout>
+    <LayoutHeader>
+        <Bar Breakpoint="Breakpoint.Desktop"
+             Background="Background.Dark"
+             ThemeContrast="ThemeContrast.Dark"
+             Padding="Padding.Is2">
+            <BarBrand>
+                <BarItem>
+                    <BarLink To="/">Dipl</BarLink>
+                </BarItem>
+            </BarBrand>
+            <BarToggler/>
+            <BarMenu>
+                <BarEnd>
+                    <BarItem>
+                        <AuthorizeView>
+                            <NotAuthorized>
+                                <Button Color="Color.Primary" Type="ButtonType.Link" To="@ReturnUrl">Log in</Button>
+                            </NotAuthorized>
+                            <Authorized>
+                                <Button Color="Color.Secondary" Type="ButtonType.Link" To="Account/Logout">Logout</Button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </BarItem>
+                </BarEnd>
+            </BarMenu>
+        </Bar>
+    </LayoutHeader>
+    <LayoutContent>
+        @Body
+    </LayoutContent>
+</Layout>
+
+@code
+{
+    string ReturnUrl => $"Account/Login?returnUrl={NavigationManager.Uri}";
+}

@@ -116,10 +116,8 @@ public class LinksService(
 
     public async Task CreateTemporaryLink(Guid linkId, User? user)
     {
-        var linkFolder =
-            (user != null ? user.UserId.ToString() : Guid.NewGuid().ToString())
-            + "/"
-            + Guid.NewGuid();
+        var userId = user?.UserId ?? User.GuestUserId;
+        var linkFolder = $"{userId}/{linkId}";
         var permission = await dbContext.Permissions.FindAsync(Permission.GuestPermissionId);
         var link = new Link
         {
@@ -127,7 +125,7 @@ public class LinksService(
             LinkType = LinkTypeEnum.Temporary,
             Permission = permission!,
             Folder = linkFolder,
-            CreatedById = user?.UserId ?? User.GuestUserId
+            CreatedById = userId
         };
 
         await fileStoreService.CreateFolder(linkFolder);

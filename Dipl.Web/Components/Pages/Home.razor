@@ -1,15 +1,14 @@
 ﻿@page "/"
+@attribute [AllowAnonymous]
 
 <PageTitle>Home</PageTitle>
 
-<main class="container">
-    <h1 class="text-center mb-4">Upload or request files</h1>
-    <div class="row justify-content-center">
-        <a class="col-auto btn btn-success" href="/upload">Upload</a>
-        <AuthorizeView>
-            <Authorized>
-                <a class="col-auto offset-1 btn btn-danger" href="/request">Request</a>
-            </Authorized>
-        </AuthorizeView>
-    </div>
-</main>
+<h1 class="text-center mb-4">Upload or request files</h1>
+<div class="row justify-content-center">
+    <a class="col-auto btn btn-success" href="/upload">Upload</a>
+    <AuthorizeView>
+        <Authorized>
+            <a class="col-auto offset-1 btn btn-danger" href="/request">Request</a>
+        </Authorized>
+    </AuthorizeView>
+</div>

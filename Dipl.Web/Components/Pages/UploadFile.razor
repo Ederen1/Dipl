@@ -1,8 +1,3 @@
-@inject LinksService LinksService
-@inject AuthenticationStateProvider GetAuthenticationStateAsync
-@inject NavigationManager Navigator
-@rendermode RenderMode.InteractiveServer
-
 @page "/upload"
 @using System.Security.Claims
 @using Dipl.Business.Entities
@@ -10,6 +5,14 @@
 @using Dipl.Business.Models
 @using Dipl.Business.Services
 @using Dipl.Web.Components.Enums
+
+@inject LinksService LinksService
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+@inject NavigationManager Navigator
+
+@attribute [AllowAnonymous]
+
+@rendermode InteractiveServer
 
 @if (LinkClosed)
 {

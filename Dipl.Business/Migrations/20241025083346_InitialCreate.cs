@@ -29,7 +29,7 @@ namespace Dipl.Business.Migrations
                 name: "Users",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    UserId = table.Column<string>(type: "TEXT", nullable: false),
                     Email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
                     UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false)
                 },
@@ -64,7 +64,7 @@ namespace Dipl.Business.Migrations
                 columns: table => new
                 {
                     GroupsGroupId = table.Column<int>(type: "INTEGER", nullable: false),
-                    UsersUserId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    UsersUserId = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -93,7 +93,7 @@ namespace Dipl.Business.Migrations
                     Message = table.Column<string>(type: "TEXT", maxLength: 10000, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
                     LastAccessed = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CreatedById = table.Column<Guid>(type: "TEXT", nullable: false),
+                    CreatedById = table.Column<string>(type: "TEXT", nullable: false),
                     PermissionId = table.Column<int>(type: "INTEGER", nullable: false),
                     NotifyOnUpload = table.Column<bool>(type: "INTEGER", nullable: false),
                     LinkClosed = table.Column<bool>(type: "INTEGER", nullable: false),
@@ -121,7 +121,7 @@ namespace Dipl.Business.Migrations
                 columns: table => new
                 {
                     PermissionsAssociatedWithThisUserPermissionId = table.Column<int>(type: "INTEGER", nullable: false),
-                    UsersUserId = table.Column<Guid>(type: "TEXT", nullable: false)
+                    UsersUserId = table.Column<string>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -148,12 +148,12 @@ namespace Dipl.Business.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "UserId", "Email", "UserName" },
-                values: new object[] { new Guid("f55aa676-775d-4312-b31c-e9d5848e06d7"), "guest@example.com", "Guest" });
+                values: new object[] { "f55aa676-775d-4312-b31c-e9d5848e06d7", "guest@example.com", "Guest" });
 
             migrationBuilder.InsertData(
                 table: "GroupUser",
                 columns: new[] { "GroupsGroupId", "UsersUserId" },
-                values: new object[] { -1, new Guid("f55aa676-775d-4312-b31c-e9d5848e06d7") });
+                values: new object[] { -1, "f55aa676-775d-4312-b31c-e9d5848e06d7" });
 
             migrationBuilder.InsertData(
                 table: "Permissions",

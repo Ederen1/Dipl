@@ -7,7 +7,7 @@ public class FileManagerService(IStoreService storeService)
 {
     public async Task<string> SetupFolderForUpload(string folderName, User? userInfo)
     {
-        var userOrTemporaryFolderName = userInfo?.UserId.ToString() ?? Guid.NewGuid().ToString();
+        var userOrTemporaryFolderName = userInfo?.UserId ?? Guid.NewGuid().ToString();
         var realFolderName = await GetFolderNameIfEmpty(userOrTemporaryFolderName, folderName);
         var fullFolderName = $"{userOrTemporaryFolderName}/{realFolderName}";
 

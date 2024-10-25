@@ -4,11 +4,12 @@
 @using Dipl.Business.Models
 @using Dipl.Business.Services
 @using Dipl.Web.Components.Enums
+@using Link = Dipl.Business.Entities.Link
 @inject NavigationManager Navigator
 @inject AuthenticationStateProvider GetAuthenticationStateAsync
 @inject FileManagerService FileManager
 @inject LinksService LinksService
-@rendermode RenderMode.InteractiveServer
+@rendermode InteractiveServer
 
 <div class="container">
     @if (Link?.LinkClosed == false)
@@ -72,9 +73,15 @@
 </div>
 
 @code {
-    [Parameter] public UploadType Type { get; set; } = UploadType.Upload;
-    [Parameter] public Guid LinkId { get; set; }
-    [Parameter] public EventCallback OnFileUploaded { get; set; }
+
+    [Parameter]
+    public UploadType Type { get; set; } = UploadType.Upload;
+
+    [Parameter]
+    public Guid LinkId { get; set; }
+
+    [Parameter]
+    public EventCallback OnFileUploaded { get; set; }
 
     private Link? Link { get; set; }
 

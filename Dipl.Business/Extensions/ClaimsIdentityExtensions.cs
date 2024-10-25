@@ -26,12 +26,12 @@ public static class ClaimsIdentityExtensions
         return email.Value;
     }
 
-    private static Guid GetUserId(ClaimsIdentity identity)
+    private static string GetUserId(ClaimsIdentity identity)
     {
         var userId =
             identity.FindFirst(ClaimTypes.NameIdentifier)
             ?? throw new Exception("NameIdentifier claim not found");
 
-        return Guid.Parse(userId.Value);
+        return userId.Value;
     }
 }

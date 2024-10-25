@@ -1,3 +1,6 @@
+using Blazorise;
+using Blazorise.Bootstrap5;
+using Blazorise.Icons.FontAwesome;
 using Dipl.Business;
 using Dipl.Business.Services.Extensions;
 using Dipl.Web.Components;
@@ -6,6 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
+
+builder.Services
+    .AddBlazorise(options => { options.Immediate = true; })
+    .AddBootstrap5Providers()
+    .AddFontAwesomeIcons();
 
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
@@ -16,8 +24,8 @@ builder.Services
     .AddMicrosoftAccount(opt =>
     {
         opt.SignInScheme = "Cookies";
-        opt.ClientId = configuration["Microsoft:Id"]!;
-        opt.ClientSecret = configuration["Microsoft:Secret"]!;
+        opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
+        opt.ClientSecret = configuration["Authentication:Microsoft:ClientSecret"]!;
     });
 
 builder.Services.AddDbContext<AppDbContext>(options =>

@@ -59,7 +59,8 @@ namespace Dipl.Business.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("CreatedById")
+                    b.Property<string>("CreatedById")
+                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Folder")
@@ -133,8 +134,7 @@ namespace Dipl.Business.Migrations
 
             modelBuilder.Entity("Dipl.Business.Entities.User", b =>
                 {
-                    b.Property<Guid>("UserId")
-                        .ValueGeneratedOnAdd()
+                    b.Property<string>("UserId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Email")
@@ -154,7 +154,7 @@ namespace Dipl.Business.Migrations
                     b.HasData(
                         new
                         {
-                            UserId = new Guid("f55aa676-775d-4312-b31c-e9d5848e06d7"),
+                            UserId = "f55aa676-775d-4312-b31c-e9d5848e06d7",
                             Email = "guest@example.com",
                             UserName = "Guest"
                         });
@@ -165,7 +165,7 @@ namespace Dipl.Business.Migrations
                     b.Property<int>("GroupsGroupId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("UsersUserId")
+                    b.Property<string>("UsersUserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("GroupsGroupId", "UsersUserId");
@@ -178,7 +178,7 @@ namespace Dipl.Business.Migrations
                         new
                         {
                             GroupsGroupId = -1,
-                            UsersUserId = new Guid("f55aa676-775d-4312-b31c-e9d5848e06d7")
+                            UsersUserId = "f55aa676-775d-4312-b31c-e9d5848e06d7"
                         });
                 });
 
@@ -187,7 +187,7 @@ namespace Dipl.Business.Migrations
                     b.Property<int>("PermissionsAssociatedWithThisUserPermissionId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("UsersUserId")
+                    b.Property<string>("UsersUserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("PermissionsAssociatedWithThisUserPermissionId", "UsersUserId");
