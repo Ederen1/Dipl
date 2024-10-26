@@ -3,6 +3,7 @@ using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
 using Dipl.Business;
 using Dipl.Business.Services.Extensions;
+using Dipl.Common.Configs;
 using Dipl.Web.Components;
 using Dipl.Web.Endpoints;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,10 @@ builder.Services
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
+builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
+builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
+builder.Services.Configure<FileStoreConfiguration>(configuration.GetSection("FileStoreConfiguration"));
+
 builder.Services
     .AddAuthentication("Cookies")
     .AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; })
@@ -31,7 +36,7 @@ builder.Services
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies();
-    options.UseSqlite("Datasource=main.sqlite3");
+    options.UseSqlite(configuration["ConnectionStrings:DiplDb"]!);
     options.EnableSensitiveDataLogging();
     options.EnableDetailedErrors();
 });

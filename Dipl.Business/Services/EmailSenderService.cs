@@ -3,23 +3,22 @@ using System.Net.Mail;
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
+using Dipl.Common.Configs;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Dipl.Business.Services;
 
 public class EmailSenderService(
-    IConfiguration configuration,
+    IOptions<EmailSenderSettings> settings,
     ILogger<EmailSenderService> logger,
     SmtpClient smtpClient,
     IStoreService storeService,
     NavigationManager navigationManager
 )
 {
-    private readonly string _domain = configuration["Domain"]!;
-    private readonly string _notifySender = configuration["NotifySenderName"]!;
-    private MailAddress Sender => new($"{_notifySender}@{_domain}");
+    private MailAddress Sender => new(settings.Value.SenderEmail);
 
     public async Task NotifyOfRequest(
         RequestLinkModel request,

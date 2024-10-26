@@ -1,8 +1,9 @@
 ﻿using System.Net;
 using System.Net.Mail;
 using Dipl.Business.Services.Interfaces;
-using Microsoft.Extensions.Configuration;
+using Dipl.Common.Configs;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Dipl.Business.Services.Extensions;
 
@@ -16,28 +17,19 @@ public static class ServiceCollectionExtensions
         serviceCollection.AddScoped<EmailSenderService>();
         serviceCollection.AddScoped<SmtpClient>(sp =>
         {
-            var configuration =
-                sp.GetService<IConfiguration>() ?? throw new Exception("Configuration not found");
-            var smtpHost = configuration["SMTPHost"]!;
-            var smtpPort = int.Parse(configuration["SMTPPort"] ?? "25");
-            var smtpUsername = configuration["SMTPUsername"];
-            var smtpPassword = configuration["SMTPPassword"];
-            var smtpUseSsl = bool.Parse(configuration["SMTPUseSSL"] ?? "true");
-
+            var settings = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;
             var smtpClient = new SmtpClient
             {
-                Host = smtpHost,
-                Port = smtpPort,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(smtpUsername, smtpPassword),
-                EnableSsl = smtpUseSsl
+                Host = settings.Host,
+                Port = settings.Port,
+                Credentials = new NetworkCredential(settings.UserName, settings.Password),
+                EnableSsl = settings.EnableSsl,
+                UseDefaultCredentials = false
             };
 
             return smtpClient;
         });
 
-        serviceCollection.AddScoped<IStoreService, FileStoreService>(
-            _ => new FileStoreService("folder/")
-        );
+        serviceCollection.AddScoped<IStoreService, FileStoreService>();
     }
 }

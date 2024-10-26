@@ -15,6 +15,7 @@ public class Link
 
     [MaxLength(10_000)]
     public string? Message { get; set; }
+
     public required string CreatedById { get; set; }
     public virtual User CreatedBy { get; set; } = null!;
     public virtual required Permission Permission { get; set; }
@@ -23,8 +24,8 @@ public class Link
 
     [MaxLength(200)]
     public string? LinkName { get; set; }
-    
+
     public DateTime CreatedAt { get; set; } = DateTime.Now;
-    
+
     public DateTime LastAccessed { get; set; } = DateTime.Now;
 }

@@ -1,11 +1,15 @@
 ﻿using Dipl.Business.Services.Interfaces;
+using Dipl.Common.Configs;
 using Dipl.Common.Extensions;
+using Microsoft.Extensions.Options;
 using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
-public class FileStoreService(string basePath) : IStoreService
+public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStoreService
 {
+    private readonly string _basePath = options.Value.BasePath;
+
     public async Task InsertFile(
         string filePath,
         Stream contents,
@@ -13,7 +17,7 @@ public class FileStoreService(string basePath) : IStoreService
         CancellationToken cancellationToken = default
     )
     {
-        var fullPath = basePath + filePath;
+        var fullPath = _basePath + filePath;
 
         await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
 
@@ -31,7 +35,7 @@ public class FileStoreService(string basePath) : IStoreService
 
     public Task CreateFolder(string name)
     {
-        var fullPath = basePath + name;
+        var fullPath = _basePath + name;
 
         Directory.CreateDirectory(fullPath);
         return Task.CompletedTask;
@@ -39,28 +43,28 @@ public class FileStoreService(string basePath) : IStoreService
 
     public Task<bool> FolderExists(string name)
     {
-        var fullPath = basePath + name;
+        var fullPath = _basePath + name;
 
         return Task.FromResult(Directory.Exists(fullPath));
     }
 
     public Task<Stream> GetFile(string name)
     {
-        var fullPath = basePath + name;
+        var fullPath = _basePath + name;
 
         return Task.FromResult<Stream>(File.Open(fullPath, FileMode.Open, FileAccess.Read));
     }
 
     public Task Delete(string path)
     {
-        var fullPath = basePath + path;
+        var fullPath = _basePath + path;
         File.Delete(fullPath);
         return Task.CompletedTask;
     }
 
     public Task DeleteFolder(string path, bool recursive = false)
     {
-        var fullPath = basePath + path;
+        var fullPath = _basePath + path;
 
         Directory.Delete(fullPath, recursive);
         return Task.CompletedTask;
@@ -68,8 +72,8 @@ public class FileStoreService(string basePath) : IStoreService
 
     public Task Move(string source, string dest)
     {
-        var fullSource = basePath + source;
-        var fullDest = basePath + source;
+        var fullSource = _basePath + source;
+        var fullDest = _basePath + source;
 
         File.Move(fullSource, fullDest);
 
@@ -78,7 +82,7 @@ public class FileStoreService(string basePath) : IStoreService
 
     public Task<FileInfo[]> List(string path)
     {
-        var fullPath = basePath + path;
+        var fullPath = _basePath + path;
 
         var directory = new DirectoryInfo(fullPath);
         var found = directory.GetFileSystemInfos().MapToFileInfos();
@@ -88,7 +92,7 @@ public class FileStoreService(string basePath) : IStoreService
 
     public Task<FileInfo[]> Search(string name)
     {
-        var directory = new DirectoryInfo(basePath);
+        var directory = new DirectoryInfo(_basePath);
         var found = directory
             .GetFileSystemInfos(name, SearchOption.AllDirectories)
             .MapToFileInfos();
