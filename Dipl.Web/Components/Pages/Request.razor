@@ -1,130 +1,130 @@
-﻿@page "/request"
-@using System.Security.Claims
-@using Dipl.Business.Entities
-@using Dipl.Business.Extensions
-@using Dipl.Business.Models
-@using Dipl.Business.Services
-@inject LinksService LinksService
-@inject NavigationManager Navigator
-@inject AuthenticationStateProvider GetAuthenticationStateAsync
-@attribute [Authorize]
-@rendermode InteractiveServer
-
-<EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink">
-    <DataAnnotationsValidator/>
-    <div class="form-group">
-        <div>
-            <label for="sendToEmails">Send to: </label>
-            <InputText class="form-control" id="sendToEmails" @bind-Value="CreateLinkModel.SendToSeparatedByCommas"></InputText>
-            <ValidationMessage For="() => CreateLinkModel.SendToSeparatedByCommas"/>
-        </div>
-        <div>
-            <label for="linkName">Link name: </label>
-            <InputText class="form-control" id="linkName" @bind-Value="CreateLinkModel.LinkName"></InputText>
-            <ValidationMessage For="() => CreateLinkModel.LinkName"/>
-        </div>
-        <div>
-            <label for="messageForUser">Message for user: </label>
-            <InputTextArea class="form-control" id="messageForUser" @bind-Value="CreateLinkModel.MessageForUser"></InputTextArea>
-        </div>
-        <div class="mt-2">
-            <label for="notifyOnUpload">Notify me when user uploads files: </label>
-            <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="CreateLinkModel.NotifyOnUpload"></InputCheckbox>
-        </div>
-        <button class="btn btn-success mt-4 mx-auto" type="submit">Generate link</button>
-    </div>
-</EditForm>
-
-@if (LinkForUpload != null)
-{
-    <div class="container rounded p-3 mt-5 shadow-sm">
-        <h3>Link: </h3>
-        <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p>
-    </div>
-}
-<div class="container mt-5">
-    <table class="table table-striped">
-        <thead>
-        <tr>
-            <th>Link name</th>
-            <th>Files uploaded</th>
-            @* <th>Accessed</th> *@
-            <th>Download</th>
-            <th>Delete</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var link in MyLinks)
-        {
-            <tr>
-                <td>@link.LinkName</td>
-                <td>@link.Files.Length</td>
-                @* <td>@link.LastAccessed</td> *@
-                <td>
-                    @if (link.Files.Length == 1)
-                    {
-                        <a class="btn btn-primary" href="/download/@link.LinkId/@link.Files[0].Name" download="@link.Files[0].Name">
-                            <span>Download file</span>
-                        </a>
-                    }
-                    else if (link.Files.Length > 1)
-                    {
-                        <a class="btn btn-primary" href="/download/@link.LinkId" download="@(GetFolderName(link)).zip">
-                            <span>Download all files</span>
-                        </a>
-                    }
-                </td>
-                <td>
-                    <button class="btn btn-danger" @onclick="() => DeleteLink(link)">Delete</button>
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
-</div>
-
-@code {
-    Business.Entities.Link? LinkForUpload { get; set; }
-    IEnumerable<LinkWithListedFiles> MyLinks { get; set; } = new List<LinkWithListedFiles>();
-    RequestLinkModel CreateLinkModel { get; set; } = new();
-
-    private async Task<User> GetUserIdentity()
-    {
-        var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
-
-        if (identity == null || identity.IsAuthenticated == false)
-            throw new Exception("User not found");
-
-        return identity.MapToUser();
-    }
-
-    private async Task DeleteLink(Business.Entities.Link link)
-    {
-        await LinksService.DeleteLink(link.LinkId);
-        if (LinkForUpload is not null && link.LinkId == LinkForUpload.LinkId)
-            LinkForUpload = null;
-
-        MyLinks = await LinksService.GetLinksForUser(await GetUserIdentity());
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        var user = await GetUserIdentity();
-        MyLinks = await LinksService.GetLinksForUser(user);
-    }
-
-    private async Task CreateLink()
-    {
-        var user = await GetUserIdentity();
-        LinkForUpload = await LinksService.GenerateRequestAndSendEmail(user, CreateLinkModel);
-        MyLinks = await LinksService.GetLinksForUser(user);
-
-        CreateLinkModel = new RequestLinkModel();
-    }
-
-    private static string GetFolderName(Business.Entities.Link link)
-    {
-        return link.Folder.Split('/').Last();
-    }
-
-}
+﻿@* @page "/request" *@
+@* @using System.Security.Claims *@
+@* @using Dipl.Business.Entities *@
+@* @using Dipl.Business.Extensions *@
+@* @using Dipl.Business.Models *@
+@* @using Dipl.Business.Services *@
+@* @inject UploadLinksService UploadLinksService *@
+@* @inject NavigationManager Navigator *@
+@* @inject AuthenticationStateProvider GetAuthenticationStateAsync *@
+@* @attribute [Authorize] *@
+@* @rendermode InteractiveServer *@
+@* *@
+@* <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@CreateLinkModel" OnValidSubmit="@CreateLink" FormName="CreateLink"> *@
+@*     <DataAnnotationsValidator/> *@
+@*     <div class="form-group"> *@
+@*         <div> *@
+@*             <label for="sendToEmails">Send to: </label> *@
+@*             <InputText class="form-control" id="sendToEmails" @bind-Value="CreateLinkModel.SendToSeparatedByCommas"></InputText> *@
+@*             <ValidationMessage For="() => CreateLinkModel.SendToSeparatedByCommas"/> *@
+@*         </div> *@
+@*         <div> *@
+@*             <label for="linkName">Link name: </label> *@
+@*             <InputText class="form-control" id="linkName" @bind-Value="CreateLinkModel.LinkName"></InputText> *@
+@*             <ValidationMessage For="() => CreateLinkModel.LinkName"/> *@
+@*         </div> *@
+@*         <div> *@
+@*             <label for="messageForUser">Message for user: </label> *@
+@*             <InputTextArea class="form-control" id="messageForUser" @bind-Value="CreateLinkModel.MessageForUser"></InputTextArea> *@
+@*         </div> *@
+@*         <div class="mt-2"> *@
+@*             <label for="notifyOnUpload">Notify me when user uploads files: </label> *@
+@*             <InputCheckbox class="form-check-input ml-2" id="notifyOnUpload" @bind-Value="CreateLinkModel.NotifyOnUpload"></InputCheckbox> *@
+@*         </div> *@
+@*         <button class="btn btn-success mt-4 mx-auto" type="submit">Generate link</button> *@
+@*     </div> *@
+@* </EditForm> *@
+@* *@
+@* @if (LinkForUpload != null) *@
+@* { *@
+@*     <div class="container rounded p-3 mt-5 shadow-sm"> *@
+@*         <h3>Link: </h3> *@
+@*         <p>@(Navigator.BaseUri)link/request/@LinkForUpload.LinkId</p> *@
+@*     </div> *@
+@* } *@
+@* <div class="container mt-5"> *@
+@*     <table class="table table-striped"> *@
+@*         <thead> *@
+@*         <tr> *@
+@*             <th>Link name</th> *@
+@*             <th>Files uploaded</th> *@
+@*             $1$ <th>Accessed</th> #1# *@
+@*             <th>Download</th> *@
+@*             <th>Delete</th> *@
+@*         </tr> *@
+@*         </thead> *@
+@*         <tbody> *@
+@*         @foreach (var link in MyLinks) *@
+@*         { *@
+@*             <tr> *@
+@*                 <td>@link.LinkTitle</td> *@
+@*                 <td>@link.Files.Length</td> *@
+@*                 $1$ <td>@link.LastAccessed</td> #1# *@
+@*                 <td> *@
+@*                     @if (link.Files.Length == 1) *@
+@*                     { *@
+@*                         <a class="btn btn-primary" href="/download/@link.LinkId/@link.Files[0].Name" download="@link.Files[0].Name"> *@
+@*                             <span>Download file</span> *@
+@*                         </a> *@
+@*                     } *@
+@*                     else if (link.Files.Length > 1) *@
+@*                     { *@
+@*                         <a class="btn btn-primary" href="/download/@link.LinkId" download="@(GetFolderName(link)).zip"> *@
+@*                             <span>Download all files</span> *@
+@*                         </a> *@
+@*                     } *@
+@*                 </td> *@
+@*                 <td> *@
+@*                     <button class="btn btn-danger" @onclick="() => DeleteLink(link)">Delete</button> *@
+@*                 </td> *@
+@*             </tr> *@
+@*         } *@
+@*         </tbody> *@
+@*     </table> *@
+@* </div> *@
+@* *@
+@* @code { *@
+@*     Business.Entities.Link? LinkForUpload { get; set; } *@
+@*     IEnumerable<LinkWithListedFiles> MyLinks { get; set; } = new List<LinkWithListedFiles>(); *@
+@*     RequestLinkModel CreateLinkModel { get; set; } = new(); *@
+@* *@
+@*     private async Task<User> GetUserIdentity() *@
+@*     { *@
+@*         var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity; *@
+@* *@
+@*         if (identity == null || identity.IsAuthenticated == false) *@
+@*             throw new Exception("User not found"); *@
+@* *@
+@*         return identity.MapToUser(); *@
+@*     } *@
+@* *@
+@*     private async Task DeleteLink(Business.Entities.Link link) *@
+@*     { *@
+@*         await UploadLinksService.DeleteLink(link.LinkId); *@
+@*         if (LinkForUpload is not null && link.LinkId == LinkForUpload.LinkId) *@
+@*             LinkForUpload = null; *@
+@* *@
+@*         MyLinks = await UploadLinksService.GetLinksForUser(await GetUserIdentity()); *@
+@*     } *@
+@* *@
+@*     protected override async Task OnInitializedAsync() *@
+@*     { *@
+@*         var user = await GetUserIdentity(); *@
+@*         MyLinks = await UploadLinksService.GetLinksForUser(user); *@
+@*     } *@
+@* *@
+@*     private async Task CreateLink() *@
+@*     { *@
+@*         var user = await GetUserIdentity(); *@
+@*         LinkForUpload = await UploadLinksService.GenerateRequestAndSendEmail(user, CreateLinkModel); *@
+@*         MyLinks = await UploadLinksService.GetLinksForUser(user); *@
+@* *@
+@*         CreateLinkModel = new RequestLinkModel(); *@
+@*     } *@
+@* *@
+@*     private static string GetFolderName(Business.Entities.Link link) *@
+@*     { *@
+@*         return link.Folder.Split('/').Last(); *@
+@*     } *@
+@* *@
+@* } *@

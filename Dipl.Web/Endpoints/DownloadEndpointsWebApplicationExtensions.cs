@@ -9,28 +9,16 @@ public static class DownloadEndpointsWebApplicationExtensions
 {
     public static void MapDownloadEndpoints(this WebApplication app)
     {
-        app.MapGet(
-            "/download/{linkId:guid}",
-            async (
-                Guid linkId,
-                AppDbContext dbContext,
-                IStoreService storeService,
-                HttpContext context
-            ) =>
+        app.MapGet("/download/{linkId:guid}",
+            async (Guid linkId, AppDbContext dbContext, IStoreService storeService, HttpContext context) =>
             {
-                var link =
-                    await dbContext.Links.FindAsync(linkId)
-                    ?? throw new Exception("Link not found");
+                var link = await dbContext.UploadLinks.FindAsync(linkId) ?? throw new Exception("Link not found");
                 var files = await storeService.List(link.Folder);
 
                 // TODO: maybe estimate final zip size?
                 // context.Response.Headers.ContentLength = files.Sum(x => x.Size);
 
-                using var archive = new ZipArchive(
-                    context.Response.BodyWriter.AsStream(),
-                    ZipArchiveMode.Create,
-                    true
-                );
+                using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
                 foreach (var file in files)
                 {
                     await using var fs = File.OpenRead(file.Path);
@@ -38,16 +26,13 @@ public static class DownloadEndpointsWebApplicationExtensions
                     await using var entryStream = entry.Open();
                     await fs.CopyToAsync(entryStream);
                 }
-            }
-        );
+            });
 
-        app.MapGet(
-            "/download/{linkId:guid}/{fileName}",
-            async (Guid linkId, string fileName, LinksService linksService) =>
+        app.MapGet("/download/{linkId:guid}/{fileName}",
+            async (Guid linkId, string fileName, UploadLinksService linksService) =>
             {
                 var file = await linksService.GetFile(linkId, fileName);
                 return Results.File(file, "application/octet-stream");
-            }
-        );
+            });
     }
 }

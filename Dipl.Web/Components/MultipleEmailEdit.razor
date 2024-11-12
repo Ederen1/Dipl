@@ -1,0 +1,78 @@
+@using Dipl.Common.Util
+@rendermode InteractiveServer
+
+<div class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))">
+    @foreach (var email in Value)
+    {
+        <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small" CloseClicked="() => RemoveEmail(email)">
+            <span class="pe-1">@email</span>
+        </Badge>
+    }
+    <TextEdit
+        @bind-Text="_currentEmail"
+        Style="@_editStyle"
+        Width="Width.Auto"
+        Role="TextRole.Email"
+        FocusOut="FocusLost"
+        KeyDown="KeyDown">
+    </TextEdit>
+</div>
+
+@code {
+
+    [Parameter]
+    public List<string> Value { get ; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<string>> ValueChanged { get; set; }
+
+    [Parameter]
+    public ValidationStatus ValidationStatus { get; set; }
+
+    private string _currentEmail = "";
+    private string _editStyle = ValidStyle;
+
+    private const string ValidStyle = "outline: none !important; box-shadow: none !important; border-width: 0 0 1px 0 !important; border-radius: 0 !important; border-color: rgb(206, 212, 218); !important; background-image: none !important;";
+    private const string InvalidStyle = ValidStyle + "border-color: red !important";
+    
+    private void RemoveEmail(string email)
+    {
+        Value.Remove(email);
+    }
+    
+    private async Task KeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key != "Enter")
+            return;
+
+        var email = _currentEmail.ParseAsEmail();
+        if (email == null)
+        {
+            _editStyle = InvalidStyle;
+            return;
+        }
+
+        await SetEmail(email);
+    }
+
+    private async Task SetEmail(string email)
+    {
+        Value.Add(email);
+        await ValueChanged.InvokeAsync(Value);
+        _editStyle = ValidStyle;
+        _currentEmail = "";
+    }
+
+    private async Task FocusLost()
+    {
+        var email = _currentEmail.ParseAsEmail();
+        if (email == null)
+        {
+            _currentEmail = "";
+            _editStyle = ValidStyle;
+            return;
+        }
+
+        await SetEmail(email);
+    }
+}

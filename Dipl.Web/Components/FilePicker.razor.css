@@ -1,0 +1,33 @@
+.picker {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-height: 300px;
+    border: 3px dashed #ccc;
+    border-radius: 5px;
+    padding: 20px 10px 10px;
+    position: relative;
+}
+
+.picker.dragover {
+    background: rgb(230, 241, 255);
+}
+
+::deep .edits.dragover .form-file {
+    /*visibility: visible;*/
+}
+
+::deep .form-file {
+    /*opacity: 0;*/
+    /*visibility: hidden;*/
+    display: none;
+}
+
+.edits {
+    display: flex;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}

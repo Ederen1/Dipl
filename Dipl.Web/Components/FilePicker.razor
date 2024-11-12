@@ -1,0 +1,104 @@
+@using Blazorise.Icons.FontAwesome
+@using Dipl.Common.Util
+@rendermode InteractiveServer
+@inject ILogger<FilePicker> _logger
+
+<div class="picker @_hoverClass"
+     @ondragenter="DragEnter"
+     ondragover="event.preventDefault()">
+    <div class="w-100 d-flex justify-content-center">
+        <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
+    </div>
+    <div class="w-100 d-flex gap-2 justify-content-center">
+        <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file</Button>
+        <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add folder</Button>
+    </div>
+
+    @foreach (var file in Value)
+    {
+        <Card>
+            <CardBody>
+                <CardTitle Padding="Padding.Is0.FromBottom">@file.Name</CardTitle>
+                <CardText>
+                    <Div Display="Display.Flex">
+                        <span>@FileUtils.BytesToString(file.Size)</span>
+                        <Button Padding="Padding.Is0.OnAll" Margin="Margin.IsAuto.FromStart" Clicked="() => RemoveFile(file)">
+                            <Blazorise.Icon Name="FontAwesomeIcons.Trash"/>
+                        </Button>
+                    </Div>
+                    @{ var fileProgress = _progress.GetValueOrDefault(file, -1); }
+                    @if (fileProgress != -1)
+                    {
+                        <Progress Value="@fileProgress"></Progress>
+                    }
+                </CardText>
+            </CardBody>
+        </Card>
+    }
+
+    @* <div class="edits @_hoverClass"> *@
+    @*     <div class="w-50 d-flex"> *@
+    <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple/>
+    @* </div> *@
+    @* <div class="w-50 d-flex"> *@
+    <FileEdit Class="directory-edit" @ref="_directoryEdit" Written="Written" Changed="OnFileChange" Directory></FileEdit>
+    @*     </div> *@
+    @* </div> *@
+</div>
+
+@code {
+
+    [Parameter]
+    public List<IFileEntry> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<IFileEntry>> ValueChanged { get; set; }
+
+    private FileEdit _fileEdit = null!;
+    private FileEdit _directoryEdit = null!;
+    private string _hoverClass = "";
+    private Dictionary<IFileEntry, int> _progress = [];
+
+    private Task AddFile()
+    {
+        return _fileEdit.ShowPicker();
+    }
+
+    private Task AddDirectory()
+    {
+        return _directoryEdit.ShowPicker();
+    }
+
+    private void RemoveFile(IFileEntry file)
+    {
+        Value.Remove(file);
+        _progress.Remove(file);
+    }
+
+    private async Task OnFileChange(FileChangedEventArgs e)
+    {
+        Value.AddRange(e.Files);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private void DragEnter(DragEventArgs obj)
+    {
+        _hoverClass = "dragover";
+    }
+
+    private void DragLeave(DragEventArgs obj)
+    {
+        _hoverClass = "";
+    }
+
+    private void Written(FileWrittenEventArgs e)
+    {
+        if (e.Position == e.File.Size)
+        {
+            _progress.Remove(e.File);
+            return;
+        }
+        
+        _progress[e.File] = (int)((double)e.Position / e.File.Size  * 100);
+    }
+}

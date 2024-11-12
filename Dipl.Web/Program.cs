@@ -6,15 +6,13 @@ using Dipl.Business.Services.Extensions;
 using Dipl.Common.Configs;
 using Dipl.Web.Components;
 using Dipl.Web.Endpoints;
+using Dipl.Web.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
-builder.Services
-    .AddBlazorise(options => { options.Immediate = true; })
-    .AddBootstrap5Providers()
-    .AddFontAwesomeIcons();
+builder.Services.AddBlazorise(options => { options.Immediate = true; }).AddBootstrap5Providers().AddFontAwesomeIcons();
 
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
@@ -23,10 +21,8 @@ builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"
 builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
 builder.Services.Configure<FileStoreConfiguration>(configuration.GetSection("FileStoreConfiguration"));
 
-builder.Services
-    .AddAuthentication("Cookies")
-    .AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; })
-    .AddMicrosoftAccount(opt =>
+builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; }).AddMicrosoftAccount(
+    opt =>
     {
         opt.SignInScheme = "Cookies";
         opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
@@ -41,6 +37,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.EnableDetailedErrors();
 });
 builder.Services.AddServiceLayer();
+builder.Services.AddWebServiceLayer();
 
 var app = builder.Build();
 

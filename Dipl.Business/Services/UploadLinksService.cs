@@ -10,38 +10,23 @@ public class LinksService(
     AppDbContext dbContext,
     EmailSenderService emailSenderService,
     NavigationManager navigationManager,
-    IStoreService fileStoreService
-)
+    UsersService usersService,
+    IStoreService fileStoreService)
 {
-    public async Task<Link> GenerateLink(string folderPath, User? user)
+    public async Task GenerateLinkAfterUpload(string folder)
     {
-        User createdBy;
-        if (user == null)
-            createdBy =
-                await dbContext.Users.FindAsync(User.GuestUserId)
-                ?? throw new Exception("Guest user not found");
-        else
-            createdBy =
-                await dbContext.Users.FindAsync(user.UserId)
-                ?? throw new Exception("User not found");
-
+        var createdBy = await usersService.GetCurrentUser();
         var guestPermission = await dbContext.Permissions.FindAsync(Permission.GuestPermissionId);
-        var link = new Link
+
+        var link = new UploadLink
         {
-            Folder = folderPath,
+            Folder = folder,
             CreatedById = createdBy.UserId,
             Permission = guestPermission!
         };
 
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
-
-        return link;
-    }
-
-    public async Task<Link> Get(Guid linkId)
-    {
-        return await dbContext.Links.FindAsync(linkId) ?? throw new Exception("Link not found");
     }
 
     public async Task<Stream> GetFile(Guid linkId, string fileName)
@@ -57,13 +42,13 @@ public class LinksService(
             CreatedById = user.UserId,
             LinkType = LinkTypeEnum.Request,
             Folder = $"{user.UserId}/{Guid.NewGuid()}",
-            LinkName = request.LinkName,
+            LinkTitle = request.LinkName,
             Message = request.MessageForUser,
             NotifyOnUpload = request.NotifyOnUpload,
             Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!
         };
 
-        await fileStoreService.CreateFolder(link.Folder);
+        await fileStoreService.CreateDirectoryIfNotExists(link.Folder);
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
 
@@ -77,14 +62,12 @@ public class LinksService(
     {
         var links = await dbContext.Links.Where(x => x.CreatedById == user.UserId).ToListAsync();
 
-        return await Task.WhenAll(
-            links.Select(async link =>
-            {
-                // TODO: maybe cache this?
-                var fileInfos = await fileStoreService.List(link.Folder);
-                return LinkWithListedFiles.FromLink(link, fileInfos);
-            })
-        );
+        return await Task.WhenAll(links.Select(async link =>
+        {
+            // TODO: maybe cache this?
+            var fileInfos = await fileStoreService.List(link.Folder);
+            return LinkWithListedFiles.FromLink(link, fileInfos);
+        }));
     }
 
     public async Task DeleteLink(Guid linkId)
@@ -93,7 +76,7 @@ public class LinksService(
         if (inDb == null)
             throw new Exception("Internal error");
 
-        await fileStoreService.DeleteFolder(inDb.Folder, true);
+        await fileStoreService.DeleteDirectory(inDb.Folder, true);
         dbContext.Links.Remove(inDb);
         await dbContext.SaveChangesAsync();
     }
@@ -128,22 +111,22 @@ public class LinksService(
             CreatedById = userId
         };
 
-        await fileStoreService.CreateFolder(linkFolder);
+        await fileStoreService.CreateDirectoryIfNotExists(linkFolder);
         await dbContext.Links.AddAsync(link);
         await dbContext.SaveChangesAsync();
     }
 
-    public async Task UpdateAndCloseLink(Guid linkId, UploadLinkModel model, User? user)
-    {
-        var inDb = await dbContext.Links.FindAsync(linkId);
-        if (inDb == null)
-            throw new Exception("Link not found");
-
-        inDb.Message = model.MessageForUser;
-        inDb.NotifyOnUpload = model.NotifyOnUpload;
-        inDb.LinkName = model.LinkName;
-        inDb.LinkClosed = true;
-        await emailSenderService.NotifyUploadForUser(inDb, model, user?.UserName);
-        await dbContext.SaveChangesAsync();
-    }
+    // public async Task UpdateAndCloseLink(Guid linkId, UploadLinkModel model, User? user)
+    // {
+    //     var inDb = await dbContext.Links.FindAsync(linkId);
+    //     if (inDb == null)
+    //         throw new Exception("Link not found");
+    //
+    //     inDb.Message = model.MessageForUser;
+    //     inDb.NotifyOnUpload = model.GuestEmail != null;
+    //     inDb.LinkTitle = model.LinkTitle;
+    //     inDb.LinkClosed = true;
+    //     await emailSenderService.NotifyUploadForUser(inDb, model, user?.UserName);
+    //     await dbContext.SaveChangesAsync();
+    // }
 }

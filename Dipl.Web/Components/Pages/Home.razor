@@ -1,18 +1,107 @@
 ﻿@page "/"
 @attribute [AllowAnonymous]
 
-<PageTitle>Home</PageTitle>
+@rendermode InteractiveServer
 
+<PageTitle>Home</PageTitle>
+@* *@
+@* <Container> *@
+@*     <Card Margin="Margin.Is2.FromTop"> *@
+@*         <CardBody> *@
+@*             <CardTitle Size="3">Upload or request files</CardTitle> *@
+@*             <Button Color="Color.Primary" Type="ButtonType.Link" To="/upload">Upload file</Button> *@
+@*             <AuthorizeView> *@
+@*                 <Authorized> *@
+@*                     <Button Color="Color.Secondary" Type="ButtonType.Link" To="/request">Request file</Button> *@
+@*                 </Authorized> *@
+@*             </AuthorizeView> *@
+@*         </CardBody> *@
+@*     </Card> *@
+@* </Container> *@
 <Container>
-    <Card Margin="Margin.Is2.FromTop">
+    <Card>
+        <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
+            <CardTitle>
+                <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Light : Color.Primary" Clicked="() => IsRequest = false">Send files</Button><Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Primary : Color.Light" Clicked="() => IsRequest = true">Request files</Button>
+            </CardTitle>
+        </CardHeader>
         <CardBody>
-            <CardTitle Size="3">Upload or request files</CardTitle>
-            <Button Color="Color.Primary" Type="ButtonType.Link" To="/upload">Upload file</Button>
-            <AuthorizeView>
-                <Authorized>
-                    <Button Color="Color.Secondary" Type="ButtonType.Link" To="/request">Request file</Button>
-                </Authorized>
-            </AuthorizeView>
+            <FileUpload></FileUpload>
+            @* <div class="mb-4"> *@
+            @*     <Button Color="Color.Primary" Block> *@
+            @*         <Icon Name="IconName.PlusCircle"/> Add files *@
+            @*     </Button> *@
+            @*     <small class="text-muted d-block mt-1">Or select a folder</small> *@
+            @* </div> *@
+            @* *@
+            @* <div class="d-flex justify-content-between align-items-center mb-2"> *@
+            @*     <small class="text-muted">Up to 2 GB free</small> *@
+            @*     <Button Color="Color.Link" Size="Size.Small"> *@
+            @*         <Icon Name="IconName.Bolt"/> Increase limit *@
+            @*     </Button> *@
+            @* </div> *@
+            @* *@
+            @* <div class="mb-3"> *@
+            @*     <small class="text-muted">Email to</small> *@
+            @*     <div class="d-flex gap-2 mb-2"> *@
+            @*         @for (var i = 0; i < 3; i++) *@
+            @*         { *@
+            @*             <Badge Color="Color.Light" *@
+            @*                    Class="@(i == 0 ? "opacity-100" : "opacity-25")"> *@
+            @*                 @(i + 1) *@
+            @*             </Badge> *@
+            @*         } *@
+            @*     </div> *@
+            @*     <TextEdit Placeholder="Your email"/> *@
+            @* </div> *@
+            @* *@
+            @* <div class="mb-3"> *@
+            @*     <TextEdit Placeholder="Title"/> *@
+            @* </div> *@
+            @* *@
+            @* <div class="mb-4"> *@
+            @*     <MemoEdit Placeholder="Message" Rows="4"> *@
+            @*         <ToolbarContent> *@
+            @*             <Toolbar> *@
+            @*                 <ToolbarItem> *@
+            @*                     <Button Color="Color.Light"> *@
+            @*                         <Icon Name="IconName.Calendar"/> *@
+            @*                     </Button> *@
+            @*                 </ToolbarItem> *@
+            @*                 <ToolbarItem> *@
+            @*                     <Button Color="Color.Light"> *@
+            @*                         <Icon Name="IconName.InfoCircle"/> *@
+            @*                     </Button> *@
+            @*                 </ToolbarItem> *@
+            @*                 <ToolbarItem> *@
+            @*                     <Button Color="Color.Light"> *@
+            @*                         $1$ <Icon Name="IconName.EnvelopeFill"/> #1# *@
+            @*                     </Button> *@
+            @*                 </ToolbarItem> *@
+            @*                 <ToolbarItem> *@
+            @*                     <Button Color="Color.Light"> *@
+            @*                         <Icon Name="IconName.Lock"/> *@
+            @*                     </Button> *@
+            @*                 </ToolbarItem> *@
+            @*                 <ToolbarItem> *@
+            @*                     <Button Color="Color.Light"> *@
+            @*                         $1$ <Icon Name="IconName.ThreeDotsVertical"/> #1# *@
+            @*                     </Button> *@
+            @*                 </ToolbarItem> *@
+            @*             </Toolbar> *@
+            @*         </ToolbarContent> *@
+            @*     </MemoEdit> *@
+            @* </div> *@
+
+            @* <Button Color="Color.Primary" Block> *@
+            @*     Transfer *@
+            @* </Button> *@
         </CardBody>
     </Card>
 </Container>
+
+@code {
+    bool IsRequest;
+
+
+}

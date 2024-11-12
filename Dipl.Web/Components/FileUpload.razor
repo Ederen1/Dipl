@@ -1,0 +1,105 @@
+@inject ILogger<FileUpload> _logger
+
+@using Dipl.Business.Services
+@using Dipl.Web.Models
+@using Dipl.Web.Services
+@implements IAsyncDisposable
+
+@inject ILogger<FileUpload> Logger
+@inject FileManagerService FileManagerService
+@inject UserAuthenticationService UserAuthenticationService
+
+@rendermode InteractiveServer
+
+<Validations @ref="_validations" ValidateOnLoad="false">
+    @if (!_isLoggedIn)
+    {
+        <Validation Validator="ValidationRule.IsEmail">
+            <Field>
+                <FieldLabel>Your email</FieldLabel>
+                <FieldBody>
+                    <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email...">
+                        <Feedback>
+                            <ValidationError>Enter valid email address</ValidationError>
+                        </Feedback>
+                    </TextEdit>
+                </FieldBody>
+            </Field>
+        </Validation>
+    }
+
+    <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
+        <Field>
+            <FieldLabel>Email to</FieldLabel>
+            <FieldBody>
+                <MultipleEmailEdit ValidationStatus="_emailToValidationStatus" @bind-Value="_model.EmailTo"></MultipleEmailEdit>
+                @if (_emailToValidationStatus == ValidationStatus.Error)
+                {
+                    <Span TextColor="TextColor.Danger" TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                }
+            </FieldBody>
+        </Field>
+    </Validation>
+
+
+    <Validation Validator="ValidationRule.IsNotEmpty">
+        <Field>
+            <FieldLabel>Title</FieldLabel>
+            <FieldBody>
+                <TextEdit @bind-Text="@_model.LinkTitle" Placeholder="Link title...">
+                    <Feedback>
+                        <ValidationError>Enter link title</ValidationError>
+                    </Feedback>
+                </TextEdit>
+            </FieldBody>
+        </Field>
+    </Validation>
+
+    <Field>
+        <FieldLabel>Message for user</FieldLabel>
+        <FieldBody>
+            <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."></MemoEdit>
+        </FieldBody>
+    </Field>
+
+    <Field>
+        <FieldLabel>Upload files here</FieldLabel>
+        <FieldBody>
+            <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"/>
+        </FieldBody>
+    </Field>
+
+    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+</Validations>
+
+@code {
+    private Validations _validations = null!;
+    private FileUploadModel _model = new();
+    private bool _isLoggedIn = false;
+    private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
+    private CancellationTokenSource _cts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoggedIn = await UserAuthenticationService.IsLoggedIn();
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+
+    private async Task Submit()
+    {
+        if (!await _validations.ValidateAll())
+            return;
+
+        await FileManagerService.UploadAllToFolder(_model);
+    }
+
+    private void ValidateEmails(ValidatorEventArgs e)
+    {
+        e.Status = !_model.EmailTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
+    }
+}

@@ -1,103 +1,103 @@
-@page "/upload"
-@using System.Security.Claims
-@using Dipl.Business.Entities
-@using Dipl.Business.Extensions
-@using Dipl.Business.Models
-@using Dipl.Business.Services
-@using Dipl.Web.Components.Enums
-
-@inject LinksService LinksService
-@inject AuthenticationStateProvider GetAuthenticationStateAsync
-@inject NavigationManager Navigator
-
-@attribute [AllowAnonymous]
-
-@rendermode InteractiveServer
-
-@if (LinkClosed)
-{
-    <div class="mt-2 container">
-        <h3>Copy link: </h3>
-        <a href="@(Navigator.BaseUri)link/@LinkId">@(Navigator.BaseUri)link/@LinkId</a>
-    </div>
-}
-
-@if (!LinkClosed)
-{
-    <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink">
-        <DataAnnotationsValidator/>
-        <div class="form-group">
-            @if (_user is null)
-            {
-                <div>
-                    <label for="sender">Sender: </label>
-                    <InputText class="form-control" id="sender" @bind-Value="Model.Sender"></InputText>
-                    <ValidationMessage For="() => Model.Sender"/>
-                </div>
-            }
-            <div>
-                <label for="sendToEmails">Send to: </label>
-                <InputText class="form-control" id="sendToEmails" @bind-Value="Model.SendToSeparatedByCommas"></InputText>
-                <ValidationMessage For="() => Model.SendToSeparatedByCommas"/>
-            </div>
-            <div>
-                <label for="linkName">Link name: </label>
-                <InputText class="form-control" id="linkName" @bind-Value="Model.LinkName"></InputText>
-                <ValidationMessage For="() => Model.LinkName"/>
-            </div>
-            <div>
-                <label for="messageForUser">Message for user: </label>
-                <InputTextArea class="form-control" id="messageForUser" @bind-Value="Model.MessageForUser"></InputTextArea>
-            </div>
-            <button class="btn btn-success mt-4 mx-auto" type="submit">Confirm Upload</button>
-            @if (FileWasNotUploadedError)
-            {
-                <p class="text-danger">No file uploaded</p>
-            }
-            <p></p>
-        </div>
-    </EditForm>
-}
-
-<Upload LinkId="LinkId" Type="@(UploadType.Upload)" OnFileUploaded="() => { FileWasUploaded = true; FileWasNotUploadedError = false; }" @ref="_upload"></Upload>
-
-@code {
-    private User? _user;
-    private UploadLinkModel Model { get; } = new();
-    private Guid LinkId { get; } = Guid.NewGuid();
-    private bool FileWasUploaded { get; set; }
-    private bool LinkClosed { get; set; }
-    public bool FileWasNotUploadedError { get; set; }
-
-    private Upload _upload = null!;
-
-    private async Task<User?> GetUserIdentity()
-    {
-        var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity;
-
-        if (identity == null || identity.IsAuthenticated == false)
-            return null;
-
-        return identity.MapToUser();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        _user = await GetUserIdentity();
-        await LinksService.CreateTemporaryLink(LinkId, _user);
-    }
-
-    private async Task UpdateLink()
-    {
-        if (!FileWasUploaded)
-        {
-            FileWasNotUploadedError = true;
-            return;
-        }
-
-        LinkClosed = true;
-        await LinksService.UpdateAndCloseLink(LinkId, Model, _user);
-        await _upload.Reload();
-    }
-
-}
+@* @page "/upload" *@
+@* @using System.Security.Claims *@
+@* @using Dipl.Business.Entities *@
+@* @using Dipl.Business.Extensions *@
+@* @using Dipl.Business.Models *@
+@* @using Dipl.Business.Services *@
+@* @using Dipl.Web.Components.Enums *@
+@* *@
+@* @inject LinksService LinksService *@
+@* @inject AuthenticationStateProvider GetAuthenticationStateAsync *@
+@* @inject NavigationManager Navigator *@
+@* *@
+@* @attribute [AllowAnonymous] *@
+@* *@
+@* @rendermode InteractiveServer *@
+@* *@
+@* @if (LinkClosed) *@
+@* { *@
+@*     <div class="mt-2 container"> *@
+@*         <h3>Copy link: </h3> *@
+@*         <a href="@(Navigator.BaseUri)link/@LinkId">@(Navigator.BaseUri)link/@LinkId</a> *@
+@*     </div> *@
+@* } *@
+@* *@
+@* @if (!LinkClosed) *@
+@* { *@
+@*     <EditForm class="mx-auto col-xl-4 col-md-5 px-4 mt-4" Model="@Model" OnValidSubmit="@UpdateLink" FormName="CreateLink"> *@
+@*         <DataAnnotationsValidator/> *@
+@*         <div class="form-group"> *@
+@*             @if (_user is null) *@
+@*             { *@
+@*                 <div> *@
+@*                     <label for="sender">Sender: </label> *@
+@*                     <InputText class="form-control" id="sender" @bind-Value="Model.Sender"></InputText> *@
+@*                     <ValidationMessage For="() => Model.Sender"/> *@
+@*                 </div> *@
+@*             } *@
+@*             <div> *@
+@*                 <label for="sendToEmails">Send to: </label> *@
+@*                 <InputText class="form-control" id="sendToEmails" @bind-Value="Model.SendToSeparatedByCommas"></InputText> *@
+@*                 <ValidationMessage For="() => Model.SendToSeparatedByCommas"/> *@
+@*             </div> *@
+@*             <div> *@
+@*                 <label for="linkName">Link name: </label> *@
+@*                 <InputText class="form-control" id="linkName" @bind-Value="Model.LinkName"></InputText> *@
+@*                 <ValidationMessage For="() => Model.LinkName"/> *@
+@*             </div> *@
+@*             <div> *@
+@*                 <label for="messageForUser">Message for user: </label> *@
+@*                 <InputTextArea class="form-control" id="messageForUser" @bind-Value="Model.MessageForUser"></InputTextArea> *@
+@*             </div> *@
+@*             <button class="btn btn-success mt-4 mx-auto" type="submit">Confirm Upload</button> *@
+@*             @if (FileWasNotUploadedError) *@
+@*             { *@
+@*                 <p class="text-danger">No file uploaded</p> *@
+@*             } *@
+@*             <p></p> *@
+@*         </div> *@
+@*     </EditForm> *@
+@* } *@
+@* *@
+@* <Upload LinkId="LinkId" Type="@(UploadType.Upload)" OnFileUploaded="() => { FileWasUploaded = true; FileWasNotUploadedError = false; }" @ref="_upload"></Upload> *@
+@* *@
+@* @code { *@
+@*     private User? _user; *@
+@*     private UploadLinkModel Model { get; } = new(); *@
+@*     private Guid LinkId { get; } = Guid.NewGuid(); *@
+@*     private bool FileWasUploaded { get; set; } *@
+@*     private bool LinkClosed { get; set; } *@
+@*     public bool FileWasNotUploadedError { get; set; } *@
+@* *@
+@*     private Upload _upload = null!; *@
+@* *@
+@*     private async Task<User?> GetUserIdentity() *@
+@*     { *@
+@*         var identity = (await GetAuthenticationStateAsync.GetAuthenticationStateAsync()).User.Identity as ClaimsIdentity; *@
+@* *@
+@*         if (identity == null || identity.IsAuthenticated == false) *@
+@*             return null; *@
+@* *@
+@*         return identity.MapToUser(); *@
+@*     } *@
+@* *@
+@*     protected override async Task OnInitializedAsync() *@
+@*     { *@
+@*         _user = await GetUserIdentity(); *@
+@*         await LinksService.CreateTemporaryLink(LinkId, _user); *@
+@*     } *@
+@* *@
+@*     private async Task UpdateLink() *@
+@*     { *@
+@*         if (!FileWasUploaded) *@
+@*         { *@
+@*             FileWasNotUploadedError = true; *@
+@*             return; *@
+@*         } *@
+@* *@
+@*         LinkClosed = true; *@
+@*         await LinksService.UpdateAndCloseLink(LinkId, Model, _user); *@
+@*         await _upload.Reload(); *@
+@*     } *@
+@* *@
+@* } *@
