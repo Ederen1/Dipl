@@ -1,71 +1,75 @@
-@* @page "/link/{linkId:guid}" *@
-@* @using Dipl.Business *@
-@* @using Dipl.Business.Services *@
-@* @using Dipl.Business.Services.Interfaces *@
-@* @using Dipl.Common.Types *@
-@* @inject UploadLinksService UploadLinksService *@
-@* @inject IStoreService StoreService *@
-@* @inject AppDbContext DbContext *@
-@* *@
-@* <div class="container"> *@
-@*     <div class="pl-auto my-2"> *@
-@*         @if (Files.Length == 1) *@
-@*         { *@
-@*             <a class="btn btn-primary" href="/download/@LinkId/@Files[0].Name" download="@Files[0].Name"> *@
-@*                 <span> *@
-@*                     Download *@
-@*                     file *@
-@*                 </span> *@
-@*             </a> *@
-@*         } *@
-@*         else if (Files.Length > 1) *@
-@*         { *@
-@*             <a class="btn btn-primary" href="/download/@LinkId" download="@(GetFolderName()).zip"> *@
-@*                 <span> *@
-@*                     Download all *@
-@*                     files *@
-@*                 </span> *@
-@*             </a> *@
-@*         } *@
-@*     </div> *@
-@* *@
-@*     <table class="table striped"> *@
-@*         <thead> *@
-@*         <th>Name</th> *@
-@*         <th>Download</th> *@
-@*         </thead> *@
-@*         <tbody> *@
-@*         @foreach (var file in Files) *@
-@*         { *@
-@*             <tr> *@
-@*                 <td>@file.Name</td> *@
-@*                 <td> *@
-@*                     <a class="btn btn-primary" href="/download/@LinkId/@file.Name" download="@file.Name">Download</a> *@
-@*                 </td> *@
-@*             </tr> *@
-@*         } *@
-@*         </tbody> *@
-@*     </table> *@
-@* </div> *@
-@* *@
-@* @code { *@
-@* *@
-@*     [Parameter] *@
-@*     public Guid LinkId { get; set; } *@
-@* *@
-@*     private Business.Entities.Link? FullLink { get; set; } *@
-@* *@
-@*     private FileInfo[] Files { get; set; } = Array.Empty<FileInfo>(); *@
-@* *@
-@*     protected override async Task OnInitializedAsync() *@
-@*     { *@
-@*         FullLink = await DbContext.Links.FindAsync(LinkId) ?? throw new Exception("Link not found"); *@
-@*         Files = await StoreService.List(FullLink!.Folder); *@
-@*     } *@
-@* *@
-@*     private string GetFolderName() *@
-@*     { *@
-@*         return FullLink!.Folder.Split('/').Last(); *@
-@*     } *@
-@* *@
-@* } *@
+@page "/link/{linkId:guid}"
+@using Dipl.Business
+@using Dipl.Business.Entities
+@using Dipl.Business.Services
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
+
+@inject UploadLinksService UploadLinksService
+@inject IStoreService StoreService
+@inject AppDbContext DbContext
+
+<Container>
+    <Row>
+        <Column>
+            <div class="my-2">
+                @if (Files.Length == 1)
+                {
+                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@($"/download/@LinkId/{Files[0].Name}")" Download="@Files[0].Name">
+                        <Icon Name="IconName.Download" Class="me-2" />
+                        Download file
+                    </Button>
+                }
+                else if (Files.Length > 1)
+                {
+                    <Button Type="ButtonType.Link"  Color="Color.Primary" To="@("/download/" + LinkId)">
+                        <Icon Name="IconName.Download" Class="me-2" />
+                        Download all files
+                    </Button>
+                }
+            </div>
+        </Column>
+    </Row>
+
+    <Table Striped>
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell>Download</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var file in Files)
+            {
+                <TableRow>
+                    <TableRowCell>@file.Name</TableRowCell>
+                    <TableRowCell>
+                        <Button Type="ButtonType.Link"  Color="Color.Primary"
+                                To="@($"/download/{LinkId}/{file.Name}")"
+                                Download="@file.Name">
+                            <Icon Name="IconName.Download" Class="me-2" />
+                            Download
+                        </Button>
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</Container>
+
+@code {
+    [Parameter]
+    public Guid LinkId { get; set; }
+
+    private BaseLink? FullLink { get; set; }
+
+    private FileInfo[] Files { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        FullLink = DbContext.UploadLinks.FirstOrDefault(x => x.UploadLinkId == LinkId)
+        ?? (BaseLink?)DbContext.RequestLinks.FirstOrDefault(x => x.RequestLinkId == LinkId);
+
+        Files = await StoreService.List(FullLink!.Folder);
+    }
+}

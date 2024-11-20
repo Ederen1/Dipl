@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Net;
 using Dipl.Business;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
@@ -15,13 +16,15 @@ public static class DownloadEndpointsWebApplicationExtensions
                 var link = await dbContext.UploadLinks.FindAsync(linkId) ?? throw new Exception("Link not found");
                 var files = await storeService.List(link.Folder);
 
-                // TODO: maybe estimate final zip size?
-                // context.Response.Headers.ContentLength = files.Sum(x => x.Size);
+                // Set the Content-Disposition header for the file name
+                context.Response.Headers.ContentDisposition = $"attachment; filename=\"{WebUtility.UrlEncode(link.LinkTitle)}.zip\";";
+                // Set the content type for ZIP files
+                context.Response.Headers.ContentType = "application/zip";
 
                 using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
                 foreach (var file in files)
                 {
-                    await using var fs = File.OpenRead(file.Path);
+                    await using var fs = await storeService.GetFile(file.Path);
                     var entry = archive.CreateEntry(file.Name, CompressionLevel.NoCompression);
                     await using var entryStream = entry.Open();
                     await fs.CopyToAsync(entryStream);

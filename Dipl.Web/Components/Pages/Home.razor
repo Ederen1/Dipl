@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using Dipl.Business.Services
+@inject UserAuthenticationService UserAuthenticationService
+
 @attribute [AllowAnonymous]
 
 @rendermode InteractiveServer
@@ -21,12 +24,27 @@
 <Container>
     <Card>
         <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
-            <CardTitle>
-                <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Light : Color.Primary" Clicked="() => IsRequest = false">Send files</Button><Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Primary : Color.Light" Clicked="() => IsRequest = true">Request files</Button>
+            <CardTitle Style="font-size: 0;">
+                <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Light : Color.Primary"
+                        Clicked="() => IsRequest = false">Send files
+                </Button>
+                @if (IsLoggedIn)
+                {
+                    <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Primary : Color.Light"
+                            Clicked="() => IsRequest = true">Request files
+                    </Button>    
+                }
             </CardTitle>
         </CardHeader>
         <CardBody>
-            <FileUpload></FileUpload>
+            @if (IsRequest)
+            {
+                <FileRequest></FileRequest>
+            }
+            else
+            {
+                <FileUpload></FileUpload>
+            }
             @* <div class="mb-4"> *@
             @*     <Button Color="Color.Primary" Block> *@
             @*         <Icon Name="IconName.PlusCircle"/> Add files *@
@@ -101,7 +119,12 @@
 </Container>
 
 @code {
-    bool IsRequest;
+    bool IsRequest { get; set; }
+    bool IsLoggedIn { get; set; }
 
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoggedIn = await UserAuthenticationService.IsLoggedIn();
+    }
 
 }
