@@ -2,5 +2,10 @@ namespace Dipl.Business.Models;
 
 public class CreateUploadLinkModel
 {
-    public 
+    public required string Sender { get; set; }
+    public required string LinkTitle { get; set; }
+    public string? MessageForUser { get; set; }
+    public required string FullFolderName { get; set; }
+    public List<string> EmailTo { get; set; } = [];
+    public List<UploadedFileInfoModel> UploadedFileInfoModels { get; set; } = [];
 }

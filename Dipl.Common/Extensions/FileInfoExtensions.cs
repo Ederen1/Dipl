@@ -4,11 +4,11 @@ namespace Dipl.Common.Extensions;
 
 public static class FileInfoExtensions
 {
-    public static FileInfo MapToFileInfo(this FileSystemInfo info)
+    public static FileInfo MapToFileInfo(this FileSystemInfo info, string basePath)
     {
         return new FileInfo
         {
-            Path = info.FullName,
+            Path = RemoveBeforeSubstring(info.FullName, basePath),
             Created = info.CreationTime,
             Updated = info.LastWriteTime,
             IsFolder = info is DirectoryInfo,
@@ -16,13 +16,20 @@ public static class FileInfoExtensions
         };
     }
 
-    public static IEnumerable<FileInfo> MapToFileInfos(this IEnumerable<FileSystemInfo> infos)
+    private static string RemoveBeforeSubstring(string input, string substring)
     {
-        return infos.Select(info => info.MapToFileInfo());
+        var index = input.IndexOf(substring, StringComparison.Ordinal);
+        return index >= 0 ? 
+            input[(index + substring.Length)..] : input; 
     }
 
-    public static FileInfo[] MapToFileInfos(this FileSystemInfo[] infos)
+    public static IEnumerable<FileInfo> MapToFileInfos(this IEnumerable<FileSystemInfo> infos, string basePath)
     {
-        return infos.Select(info => info.MapToFileInfo()).ToArray();
+        return infos.Select(info => info.MapToFileInfo(basePath));
+    }
+
+    public static FileInfo[] MapToFileInfos(this FileSystemInfo[] infos, string basePath)
+    {
+        return MapToFileInfos(infos.AsEnumerable(), basePath).ToArray();
     }
 }

@@ -3,7 +3,7 @@ using Dipl.Business.Entities;
 using Dipl.Business.Extensions;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace Dipl.Web.Services;
+namespace Dipl.Business.Services;
 
 public class UserAuthenticationService(AuthenticationStateProvider authenticationStateProvider)
 {

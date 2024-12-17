@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Dipl.Business.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241025083346_InitialCreate")]
+    [Migration("20241111115105_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -53,56 +53,6 @@ namespace Dipl.Business.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Dipl.Business.Entities.Link", b =>
-                {
-                    b.Property<Guid>("LinkId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedById")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Folder")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("LastAccessed")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("LinkClosed")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("LinkName")
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("LinkType")
-                        .HasColumnType("INT");
-
-                    b.Property<string>("Message")
-                        .HasMaxLength(10000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("NotifyOnUpload")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("LinkId");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("PermissionId");
-
-                    b.ToTable("Links");
-                });
-
             modelBuilder.Entity("Dipl.Business.Entities.Permission", b =>
                 {
                     b.Property<int>("PermissionId")
@@ -133,6 +83,97 @@ namespace Dipl.Business.Migrations
                             Read = true,
                             Write = false
                         });
+                });
+
+            modelBuilder.Entity("Dipl.Business.Entities.RequestLink", b =>
+                {
+                    b.Property<Guid>("RequestLinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedById")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastAccessed")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("LinkClosed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LinkTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(10000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("NotifyOnUpload")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("RequestLinkId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RequestLinks");
+                });
+
+            modelBuilder.Entity("Dipl.Business.Entities.UploadLink", b =>
+                {
+                    b.Property<Guid>("UploadLinkId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedById")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastAccessed")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("LinkClosed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LinkTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(10000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PermissionId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("UploadLinkId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("UploadLinks");
                 });
 
             modelBuilder.Entity("Dipl.Business.Entities.User", b =>
@@ -200,10 +241,21 @@ namespace Dipl.Business.Migrations
                     b.ToTable("PermissionUser");
                 });
 
-            modelBuilder.Entity("Dipl.Business.Entities.Link", b =>
+            modelBuilder.Entity("Dipl.Business.Entities.Permission", b =>
+                {
+                    b.HasOne("Dipl.Business.Entities.Group", "Group")
+                        .WithOne("Permission")
+                        .HasForeignKey("Dipl.Business.Entities.Permission", "GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("Dipl.Business.Entities.RequestLink", b =>
                 {
                     b.HasOne("Dipl.Business.Entities.User", "CreatedBy")
-                        .WithMany("Links")
+                        .WithMany("RequestLinks")
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -219,15 +271,23 @@ namespace Dipl.Business.Migrations
                     b.Navigation("Permission");
                 });
 
-            modelBuilder.Entity("Dipl.Business.Entities.Permission", b =>
+            modelBuilder.Entity("Dipl.Business.Entities.UploadLink", b =>
                 {
-                    b.HasOne("Dipl.Business.Entities.Group", "Group")
-                        .WithOne("Permission")
-                        .HasForeignKey("Dipl.Business.Entities.Permission", "GroupId")
+                    b.HasOne("Dipl.Business.Entities.User", "CreatedBy")
+                        .WithMany("UploadLinks")
+                        .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Group");
+                    b.HasOne("Dipl.Business.Entities.Permission", "Permission")
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("Permission");
                 });
 
             modelBuilder.Entity("GroupUser", b =>
@@ -268,7 +328,9 @@ namespace Dipl.Business.Migrations
 
             modelBuilder.Entity("Dipl.Business.Entities.User", b =>
                 {
-                    b.Navigation("Links");
+                    b.Navigation("RequestLinks");
+
+                    b.Navigation("UploadLinks");
                 });
 #pragma warning restore 612, 618
         }

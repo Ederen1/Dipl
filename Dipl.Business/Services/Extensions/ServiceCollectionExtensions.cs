@@ -2,6 +2,7 @@
 using System.Net.Mail;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Configs;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -11,10 +12,12 @@ public static class ServiceCollectionExtensions
 {
     public static void AddServiceLayer(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddScoped<FileManagerService>();
-        serviceCollection.AddScoped<LinksService>();
+        serviceCollection.AddScoped<UploadLinksService>();
+        serviceCollection.AddScoped<RequestLinksService>();
         serviceCollection.AddScoped<UsersService>();
+        serviceCollection.AddScoped<UserAuthenticationService>();
         serviceCollection.AddScoped<EmailSenderService>();
+        serviceCollection.AddScoped<HtmlRenderer>();
         serviceCollection.AddScoped<SmtpClient>(sp =>
         {
             var settings = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;

@@ -1,14 +1,153 @@
-
+@using Dipl.Business.Models
+@using Dipl.Common.Util
+@inject NavigationManager NavigationManager
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files Shared</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.4;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            padding: 40px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin: 0 auto;
+        }
+        .container-wrapper {
+            background-color: #fafafa;
+            padding: 20px;
+        }
+        
+        @@media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        } 
+
+        .sender-info {
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .sender {
+            color: #0061FF;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .sent-text {
+            color: #333;
+            margin: 4px 0;
+        }
+        .stats {
+            color: #666;
+            font-size: 14px;
+            margin: 16px 0 24px 0;
+        }
+        .files {
+            margin: 24px 0;
+            background: #f7f7f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .file-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-name {
+            color: #333;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+        .button-container {
+            text-align: center;
+            margin: 32px 0 8px 0;
+        }
+        .button {
+            border: none;
+            display: inline-block;
+            text-decoration: none;
+            background: #0061FF;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-weight: 500;
+            font-size: 15px;
+        }
+        .message {
+            color: black;
+            font-size: 0.9rem;
+        }
+        .button:visited {
+            color: #fff;
+        }
+        .button:hover {
+            background: #0052D9;
+        }
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 24px 0;
+        }
+    </style>
 </head>
 <body>
-    <div>
-          
-    </div>
-</body>
 
+<div class="container-wrapper">
+    <div class="container">
+        <div class="sender-info">
+            <span class="sender">@Model.Model.Sender</span>
+            <div class="sent-text">sent you @Model.Model.LinkTitle</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Model.MessageForUser))
+        {
+            <div class="message">@Model.Model.MessageForUser</div>
+            <div class="divider"></div>
+        }
+
+        <div class="stats">
+            @Model.Model.UploadedFileInfoModels.Count item@(Model.Model.UploadedFileInfoModels.Count != 1 ? "s" : ""),
+            @(FileUtils.BytesToString(Model.Model.UploadedFileInfoModels.Sum(f => f.Size))) in total ·
+        </div>
+
+        <div class="files">
+            @foreach (var file in Model.Model.UploadedFileInfoModels)
+            {
+                <div class="file-item">
+                    <div class="file-name">@file.Name</div>
+                    <div class="file-size">@(FileUtils.BytesToString(file.Size))</div>
+                </div>
+            }
+        </div>
+
+        <div class="button-container">
+            <a class="button" style="color: #FFFFFF; text-decoration: none" href="@($"{NavigationManager.BaseUri}link/{Model.UploadLinkId}")">
+                <span style="color: #FFFFFF; text-decoration: none">
+                    <font color="#FFFFFF">Get your files</font>
+                </span>
+            </a>
+        </div>
+    </div>
+</div>
+</body>
 </html>
+
+@code {
+    [Parameter]
+    public NotifyUserUploadedModel Model { get; set; } = null!;
+}

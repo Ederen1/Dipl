@@ -1,39 +1,43 @@
 ﻿using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Configs;
 using Dipl.Common.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
-public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStoreService
+public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<FileStoreService> logger)
+    : IStoreService
 {
     private readonly string _basePath = options.Value.BasePath;
 
-    public async Task InsertFile(
-        string filePath,
-        Stream contents,
-        Action<long> progress,
-        CancellationToken cancellationToken = default
-    )
+    public async Task InsertFile(string fileName, string folder, Stream contents, CancellationToken cancellationToken = default)
     {
-        var fullPath = _basePath + filePath;
+        var fullPath = Path.Combine(_basePath, folder, fileName);
+        logger.LogInformation("Uploading file: {}", fileName);
 
-        await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
-
-        var buffer = new byte[1024 * 1024];
-        var read = 0;
-        while (
-            !cancellationToken.IsCancellationRequested
-            && (read = await contents.ReadAsync(buffer, cancellationToken)) != 0
-        )
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
+        var transferDone = false;
+        try
         {
-            await file.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            progress(file.Length);
+            await contents.CopyToAsync(file, cancellationToken);
+            transferDone = true;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("File transfer was cancelled.");
+        }
+        finally
+        {
+            await file.DisposeAsync();
+            if (!transferDone)
+                File.Delete(fullPath);
         }
     }
 
-    public Task CreateFolder(string name)
+    public Task CreateDirectoryIfNotExists(string name)
     {
         var fullPath = _basePath + name;
 
@@ -41,7 +45,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStore
         return Task.CompletedTask;
     }
 
-    public Task<bool> FolderExists(string name)
+    public Task<bool> DirectoryExists(string name)
     {
         var fullPath = _basePath + name;
 
@@ -62,7 +66,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStore
         return Task.CompletedTask;
     }
 
-    public Task DeleteFolder(string path, bool recursive = false)
+    public Task DeleteDirectory(string path, bool recursive = false)
     {
         var fullPath = _basePath + path;
 
@@ -85,7 +89,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStore
         var fullPath = _basePath + path;
 
         var directory = new DirectoryInfo(fullPath);
-        var found = directory.GetFileSystemInfos().MapToFileInfos();
+        var found = directory.GetFileSystemInfos().MapToFileInfos(_basePath);
 
         return Task.FromResult(found);
     }
@@ -93,9 +97,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options) : IStore
     public Task<FileInfo[]> Search(string name)
     {
         var directory = new DirectoryInfo(_basePath);
-        var found = directory
-            .GetFileSystemInfos(name, SearchOption.AllDirectories)
-            .MapToFileInfos();
+        var found = directory.GetFileSystemInfos(name, SearchOption.AllDirectories).MapToFileInfos(_basePath);
 
         return Task.FromResult(found);
     }

@@ -6,7 +6,8 @@ namespace Dipl.Business;
 public class AppDbContext(DbContextOptions options) : DbContext(options)
 {
     public DbSet<User> Users { get; set; }
-    public DbSet<Link> Links { get; set; }
+    public DbSet<UploadLink> UploadLinks { get; set; }
+    public DbSet<RequestLink> RequestLinks { get; set; }
     public DbSet<Permission> Permissions { get; set; }
     public DbSet<Group> Groups { get; set; }
 
@@ -15,7 +16,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
         InitializeData(modelBuilder);
         base.OnModelCreating(modelBuilder);
     }
-
+    
     private static void InitializeData(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Group>().HasData(new Group
