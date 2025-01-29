@@ -7,5 +7,5 @@ public class CreateUploadLinkModel
     public string? MessageForUser { get; set; }
     public required string FullFolderName { get; set; }
     public List<string> EmailTo { get; set; } = [];
-    public List<UploadedFileInfoModel> UploadedFileInfoModels { get; set; } = [];
+    public List<FileInfoModel> UploadedFileInfoModels { get; set; } = [];
 }

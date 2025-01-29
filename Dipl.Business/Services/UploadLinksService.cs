@@ -12,7 +12,7 @@ public class UploadLinksService(
     UsersService usersService,
     IStoreService fileStoreService)
 {
-    public async Task GenerateLinkAfterUploadAndNotifyUser(CreateUploadLinkModel model)
+    public async Task<Guid> GenerateLinkAfterUploadAndNotifyUser(CreateUploadLinkModel model)
     {
         var createdBy = await usersService.GetCurrentUser();
         var guestPermission = await dbContext.Permissions.FindAsync(Permission.GuestPermissionId);
@@ -30,6 +30,7 @@ public class UploadLinksService(
         await dbContext.SaveChangesAsync();
 
         await emailSenderService.NotifyUserUploaded(link, model);
+        return link.LinkId;
     }
 
     public async Task<Stream> GetFile(Guid linkId, string fileName)

@@ -1,4 +1,6 @@
-namespace Dipl.Business.Models;
+using Dipl.Business.Models;
+
+namespace Dipl.Business.EmailModels;
 
 public class NotifyUserRequestedModel
 {

@@ -18,7 +18,7 @@ public class FileUploadModel
         LinkTitle = LinkTitle,
         MessageForUser = MessageForUser,
         EmailTo = EmailTo,
-        UploadedFileInfoModels = FilesToUpload.Select(f => new UploadedFileInfoModel
+        UploadedFileInfoModels = FilesToUpload.Select(f => new FileInfoModel
         {
             Name = f.Name,
             Size = f.Size,

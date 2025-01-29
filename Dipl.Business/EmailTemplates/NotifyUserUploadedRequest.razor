@@ -1,12 +1,12 @@
 @using Dipl.Business.EmailModels
-@using Dipl.Business.Models
+@using Dipl.Common.Util
 @inject NavigationManager NavigationManager
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Request</title>
+    <title>Files Requested</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -25,32 +25,53 @@
             background-color: #fafafa;
             padding: 20px;
         }
-
+        
         @@media only screen and (max-width: 600px) {
             .container {
                 padding: 10px;
             }
-        }
+        } 
 
-        .request-info {
+        .sender-info {
             margin-bottom: 24px;
             font-size: 1.5rem;
             text-align: center;
         }
-        .link-name {
+        .sender {
             color: #0061FF;
             text-decoration: none;
             font-weight: 500;
         }
-        .request-text {
+        .sent-text {
             color: #333;
             margin: 4px 0;
         }
-        .message {
-            color: black;
-            font-size: 0.9rem;
+        .stats {
+            color: #666;
+            font-size: 14px;
+            margin: 16px 0 24px 0;
+        }
+        .files {
             margin: 24px 0;
-            text-align: center;
+            background: #f7f7f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .file-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        .file-name {
+            color: #333;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+        .file-size {
+            color: #666;
+            font-size: 14px;
         }
         .button-container {
             text-align: center;
@@ -67,6 +88,10 @@
             font-weight: 500;
             font-size: 15px;
         }
+        .message {
+            color: black;
+            font-size: 0.9rem;
+        }
         .button:visited {
             color: #fff;
         }
@@ -78,43 +103,36 @@
             background: #eee;
             margin: 24px 0;
         }
-        .notify-info {
-            text-align: center;
-            color: #666;
-            font-size: 14px;
-            margin-top: 16px;
-        }
     </style>
 </head>
 <body>
 
 <div class="container-wrapper">
     <div class="container">
-        <div class="request-info">
-            <span class="link-name">@Model.Model.LinkName</span>
-            <div class="request-text">Someone is requesting files from you</div>
+        <div class="sender-info">
+            <span class="sender">@Model.ResponderEmail uploaded files</span>
         </div>
 
-        @if (!string.IsNullOrEmpty(Model.Model.MessageForUser))
+        @if (!string.IsNullOrEmpty(Model.Message))
         {
-            <div class="message">@Model.Model.MessageForUser</div>
+            <div class="message">@Model.Message</div>
             <div class="divider"></div>
         }
 
-        <div class="button-container">
-            <a class="button" style="color: #FFFFFF; text-decoration: none" href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}")">
-                <span style="color: #FFFFFF; text-decoration: none">
-                    <font color="#FFFFFF">Upload your files</font>
-                </span>
-            </a>
+        <div class="stats">
+            @Model.Files.Length item@(Model.Files.Length != 1 ? "s" : ""),
+            @(FileUtils.BytesToString(Model.Files.Sum(f => f.Size))) in total ·
         </div>
 
-        @if (Model.Model.NotifyOnUpload)
-        {
-            <div class="notify-info">
-                The requester will be notified when you upload files
-            </div>
-        }
+        <div class="files">
+            @foreach (var file in Model.Files)
+            {
+                <div class="file-item">
+                    <div class="file-name">@file.Name</div>
+                    <div class="file-size">@(FileUtils.BytesToString(file.Size))</div>
+                </div>
+            }
+        </div>
     </div>
 </div>
 </body>
@@ -122,5 +140,5 @@
 
 @code {
     [Parameter]
-    public NotifyUserRequestedModel Model { get; set; } = null!;
+    public NotifyRequestUploadedModel Model { get; set; } = null!;
 }
