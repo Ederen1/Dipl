@@ -11,20 +11,23 @@ public class FileUploadModel
     public string? MessageForUser { get; set; }
     public List<IFileEntry> FilesToUpload { get; set; } = [];
 
-    public CreateUploadLinkModel MapToCreateUploadModel(string? userName) => new CreateUploadLinkModel
+    public CreateUploadLinkModel MapToCreateUploadModel(string? userName)
     {
-        Sender = userName ?? GuestEmail!,
-        FullFolderName = Path.Combine(userName ?? GuestEmail!, SanitizePath(LinkTitle)),
-        LinkTitle = LinkTitle,
-        MessageForUser = MessageForUser,
-        EmailTo = EmailTo,
-        UploadedFileInfoModels = FilesToUpload.Select(f => new FileInfoModel
+        return new CreateUploadLinkModel
         {
-            Name = f.Name,
-            Size = f.Size,
-        }).ToList()
-    };
-    
+            Sender = userName ?? GuestEmail!,
+            FullFolderName = Path.Combine(userName ?? GuestEmail!, SanitizePath(LinkTitle)),
+            LinkTitle = LinkTitle,
+            MessageForUser = MessageForUser,
+            EmailTo = EmailTo,
+            UploadedFileInfoModels = FilesToUpload.Select(f => new FileInfoModel
+            {
+                Name = f.Name,
+                Size = f.Size
+            }).ToList()
+        };
+    }
+
     private static string SanitizePath(string path)
     {
         var notAllowed = Path.GetInvalidPathChars().Concat(Path.GetInvalidFileNameChars());

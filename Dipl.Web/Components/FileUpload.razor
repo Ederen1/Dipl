@@ -31,10 +31,12 @@
         <Field>
             <FieldLabel>Email to</FieldLabel>
             <FieldBody>
-                <MultipleEmailEdit ValidationStatus="_emailToValidationStatus" @bind-Value="_model.EmailTo"></MultipleEmailEdit>
+                <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
+                                   @bind-Value="_model.EmailTo"></MultipleEmailEdit>
                 @if (_emailToValidationStatus == ValidationStatus.Error)
                 {
-                    <Span TextColor="TextColor.Danger" TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                    <Span TextColor="TextColor.Danger"
+                          TextSize="TextSize.Small">Enter at least one valid email address</Span>
                 }
             </FieldBody>
         </Field>
@@ -82,7 +84,7 @@
     {
         _isLoggedIn = await UserAuthenticationService.IsLoggedIn();
     }
-    
+
     public async ValueTask DisposeAsync()
     {
         await _cts.CancelAsync();
@@ -101,11 +103,12 @@
             NavigationManager.NavigateTo("uploads");
         }
         else
-            NavigationManager.NavigateTo($"{NavigationManager.BaseUri}link/{linkId}");    
+            NavigationManager.NavigateTo($"{NavigationManager.BaseUri}link/{linkId}");
     }
 
     private void ValidateEmails(ValidatorEventArgs e)
     {
         e.Status = !_model.EmailTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
     }
+
 }

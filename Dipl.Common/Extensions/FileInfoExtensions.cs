@@ -19,8 +19,7 @@ public static class FileInfoExtensions
     private static string RemoveBeforeSubstring(string input, string substring)
     {
         var index = input.IndexOf(substring, StringComparison.Ordinal);
-        return index >= 0 ? 
-            input[(index + substring.Length)..] : input; 
+        return index >= 0 ? input[(index + substring.Length)..] : input;
     }
 
     public static IEnumerable<FileInfo> MapToFileInfos(this IEnumerable<FileSystemInfo> infos, string basePath)

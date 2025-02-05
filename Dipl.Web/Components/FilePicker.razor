@@ -11,7 +11,8 @@
     </div>
     <div class="w-100 d-flex gap-2 justify-content-center">
         <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file</Button>
-        <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add folder</Button>
+        <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add folder
+        </Button>
     </div>
 
     @foreach (var file in Value)
@@ -22,7 +23,8 @@
                 <CardText>
                     <Div Display="Display.Flex">
                         <span>@FileUtils.BytesToString(file.Size)</span>
-                        <Button Padding="Padding.Is0.OnAll" Margin="Margin.IsAuto.FromStart" Clicked="() => RemoveFile(file)">
+                        <Button Padding="Padding.Is0.OnAll" Margin="Margin.IsAuto.FromStart"
+                                Clicked="() => RemoveFile(file)">
                             <Blazorise.Icon Name="FontAwesomeIcons.Trash"/>
                         </Button>
                     </Div>
@@ -41,7 +43,8 @@
     <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple/>
     @* </div> *@
     @* <div class="w-50 d-flex"> *@
-    <FileEdit Class="directory-edit" @ref="_directoryEdit" Written="Written" Changed="OnFileChange" Directory></FileEdit>
+    <FileEdit Class="directory-edit" @ref="_directoryEdit" Written="Written" Changed="OnFileChange"
+              Directory></FileEdit>
     @*     </div> *@
     @* </div> *@
 </div>
@@ -98,7 +101,8 @@
             _progress.Remove(e.File);
             return;
         }
-        
-        _progress[e.File] = (int)((double)e.Position / e.File.Size  * 100);
+
+        _progress[e.File] = (int)((double)e.Position / e.File.Size * 100);
     }
+
 }

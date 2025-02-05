@@ -111,20 +111,19 @@ namespace Dipl.Business.Migrations
                 name: "RequestLinks",
                 columns: table => new
                 {
-                    RequestLinkId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    LinkId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    NotifyOnUpload = table.Column<bool>(type: "INTEGER", nullable: false),
                     LinkTitle = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
                     Folder = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
                     Message = table.Column<string>(type: "TEXT", maxLength: 10000, nullable: true),
-                    NotifyOnUpload = table.Column<bool>(type: "INTEGER", nullable: false),
-                    LinkClosed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    LastAccessed = table.Column<DateTime>(type: "TEXT", nullable: false),
                     CreatedById = table.Column<string>(type: "TEXT", nullable: false),
-                    PermissionId = table.Column<int>(type: "INTEGER", nullable: false)
+                    PermissionId = table.Column<int>(type: "INTEGER", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastAccessed = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_RequestLinks", x => x.RequestLinkId);
+                    table.PrimaryKey("PK_RequestLinks", x => x.LinkId);
                     table.ForeignKey(
                         name: "FK_RequestLinks_Permissions_PermissionId",
                         column: x => x.PermissionId,
@@ -143,19 +142,18 @@ namespace Dipl.Business.Migrations
                 name: "UploadLinks",
                 columns: table => new
                 {
-                    UploadLinkId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    LinkId = table.Column<Guid>(type: "TEXT", nullable: false),
                     LinkTitle = table.Column<string>(type: "TEXT", maxLength: 200, nullable: true),
                     Folder = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
                     Message = table.Column<string>(type: "TEXT", maxLength: 10000, nullable: true),
-                    LinkClosed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    LastAccessed = table.Column<DateTime>(type: "TEXT", nullable: false),
                     CreatedById = table.Column<string>(type: "TEXT", nullable: false),
-                    PermissionId = table.Column<int>(type: "INTEGER", nullable: false)
+                    PermissionId = table.Column<int>(type: "INTEGER", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    LastAccessed = table.Column<DateTime>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UploadLinks", x => x.UploadLinkId);
+                    table.PrimaryKey("PK_UploadLinks", x => x.LinkId);
                     table.ForeignKey(
                         name: "FK_UploadLinks_Permissions_PermissionId",
                         column: x => x.PermissionId,
@@ -168,6 +166,25 @@ namespace Dipl.Business.Migrations
                         principalTable: "Users",
                         principalColumn: "UserId",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RequestLinkUploadSlots",
+                columns: table => new
+                {
+                    RequestLinkUploadSlotId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Email = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
+                    Closed = table.Column<bool>(type: "INTEGER", nullable: false),
+                    RequestLinkLinkId = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RequestLinkUploadSlots", x => x.RequestLinkUploadSlotId);
+                    table.ForeignKey(
+                        name: "FK_RequestLinkUploadSlots_RequestLinks_RequestLinkLinkId",
+                        column: x => x.RequestLinkLinkId,
+                        principalTable: "RequestLinks",
+                        principalColumn: "LinkId");
                 });
 
             migrationBuilder.InsertData(
@@ -217,6 +234,11 @@ namespace Dipl.Business.Migrations
                 column: "PermissionId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_RequestLinkUploadSlots_RequestLinkLinkId",
+                table: "RequestLinkUploadSlots",
+                column: "RequestLinkLinkId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_UploadLinks_CreatedById",
                 table: "UploadLinks",
                 column: "CreatedById");
@@ -237,10 +259,13 @@ namespace Dipl.Business.Migrations
                 name: "PermissionUser");
 
             migrationBuilder.DropTable(
-                name: "RequestLinks");
+                name: "RequestLinkUploadSlots");
 
             migrationBuilder.DropTable(
                 name: "UploadLinks");
+
+            migrationBuilder.DropTable(
+                name: "RequestLinks");
 
             migrationBuilder.DropTable(
                 name: "Permissions");

@@ -1,0 +1,77 @@
+<Div style="min-width: 140px">
+    @if (!_showConfirmation)
+    {
+        <Button @attributes="AdditionalAttributes"
+                Color="@Color"
+                Size="@Size"
+                Outline="@Outline"
+                Disabled="@Disabled"
+                @onclick="ShowConfirmation">
+            @ChildContent
+        </Button>
+    }
+    else
+    {
+        <Button Color="Color.Success"
+                Size="@Size"
+                Outline="@Outline"
+                @onclick="Confirm">
+            Confirm
+        </Button>
+        <Button Color="Color.Secondary"
+                Size="@Size"
+                Outline="@Outline"
+                @onclick="Cancel">
+            Cancel
+        </Button>
+    }
+</Div>
+
+
+@code {
+    private bool _showConfirmation;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Primary;
+
+    [Parameter]
+    public Size Size { get; set; } = Size.Default;
+
+    [Parameter]
+    public bool Outline { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
+
+    private void ShowConfirmation()
+    {
+        if (Disabled)
+            return;
+
+        _showConfirmation = true;
+    }
+
+    private async Task Confirm()
+    {
+        _showConfirmation = false;
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync(null);
+        }
+    }
+
+    private void Cancel()
+    {
+        _showConfirmation = false;
+    }
+
+}

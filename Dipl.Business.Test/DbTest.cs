@@ -38,7 +38,7 @@ public class DbTest
         });
         user.Entity.UploadLinks.Add(new UploadLink
         {
-            UploadLinkId = Guid.NewGuid(),
+            LinkId = Guid.NewGuid(),
             CreatedById = user.Entity.UserId,
             Folder = "/some/folder",
             Permission = permission.Entity
@@ -49,4 +49,3 @@ public class DbTest
         Assert.Single(user.Entity.UploadLinks);
         Assert.NotNull(permission.Entity.Group);
     }
-}

@@ -15,15 +15,16 @@
             <div class="my-2">
                 @if (Files.Length == 1)
                 {
-                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@($"/download/@LinkId/{Files[0].Name}")" Download="@Files[0].Name">
-                        <Icon Name="IconName.Download" Class="me-2" />
+                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@($"/download/@LinkId/{Files[0].Name}")"
+                            Download="@Files[0].Name">
+                        <Icon Name="IconName.Download" Class="me-2"/>
                         Download file
                     </Button>
                 }
                 else if (Files.Length > 1)
                 {
-                    <Button Type="ButtonType.Link"  Color="Color.Primary" To="@("/download/" + LinkId)">
-                        <Icon Name="IconName.Download" Class="me-2" />
+                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + LinkId)">
+                        <Icon Name="IconName.Download" Class="me-2"/>
                         Download all files
                     </Button>
                 }
@@ -44,10 +45,10 @@
                 <TableRow>
                     <TableRowCell>@file.Name</TableRowCell>
                     <TableRowCell>
-                        <Button Type="ButtonType.Link"  Color="Color.Primary"
+                        <Button Type="ButtonType.Link" Color="Color.Primary"
                                 To="@($"/download/{LinkId}/{file.Name}")"
                                 Download="@file.Name">
-                            <Icon Name="IconName.Download" Class="me-2" />
+                            <Icon Name="IconName.Download" Class="me-2"/>
                             Download
                         </Button>
                     </TableRowCell>
@@ -58,6 +59,7 @@
 </Container>
 
 @code {
+
     [Parameter]
     public Guid LinkId { get; set; }
 
@@ -67,9 +69,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        FullLink = DbContext.UploadLinks.FirstOrDefault(x => x.UploadLinkId == LinkId)
-        ?? (BaseLink?)DbContext.RequestLinks.FirstOrDefault(x => x.RequestLinkId == LinkId);
+        FullLink = DbContext.UploadLinks.FirstOrDefault(x => x.LinkId == LinkId) ?? (BaseLink?)DbContext.RequestLinks.FirstOrDefault(x => x.LinkId == LinkId);
 
         Files = await StoreService.List(FullLink!.Folder);
     }
+
 }

@@ -1,5 +1,4 @@
 @using Dipl.Business.EmailModels
-@using Dipl.Business.Models
 @inject NavigationManager NavigationManager
 <!DOCTYPE html>
 <html lang="en">
@@ -13,14 +12,16 @@
             line-height: 1.4;
             color: #333;
         }
+
         .container {
             background: white;
             border-radius: 12px;
             max-width: 600px;
             padding: 40px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             margin: 0 auto;
         }
+
         .container-wrapper {
             background-color: #fafafa;
             padding: 20px;
@@ -37,25 +38,30 @@
             font-size: 1.5rem;
             text-align: center;
         }
+
         .link-name {
             color: #0061FF;
             text-decoration: none;
             font-weight: 500;
         }
+
         .request-text {
             color: #333;
             margin: 4px 0;
         }
+
         .message {
             color: black;
             font-size: 0.9rem;
             margin: 24px 0;
             text-align: center;
         }
+
         .button-container {
             text-align: center;
             margin: 32px 0 8px 0;
         }
+
         .button {
             border: none;
             display: inline-block;
@@ -67,17 +73,21 @@
             font-weight: 500;
             font-size: 15px;
         }
+
         .button:visited {
             color: #fff;
         }
+
         .button:hover {
             background: #0052D9;
         }
+
         .divider {
             height: 1px;
             background: #eee;
             margin: 24px 0;
         }
+
         .notify-info {
             text-align: center;
             color: #666;
@@ -102,7 +112,8 @@
         }
 
         <div class="button-container">
-            <a class="button" style="color: #FFFFFF; text-decoration: none" href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}")">
+            <a class="button" style="color: #FFFFFF; text-decoration: none"
+               href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}/{Model.CurrentlySendingTo}")">
                 <span style="color: #FFFFFF; text-decoration: none">
                     <font color="#FFFFFF">Upload your files</font>
                 </span>
@@ -121,6 +132,8 @@
 </html>
 
 @code {
+
     [Parameter]
     public NotifyUserRequestedModel Model { get; set; } = null!;
+
 }

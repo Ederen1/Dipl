@@ -2,18 +2,14 @@ using Dipl.Business.EmailModels;
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
 using Dipl.Business.Services.Interfaces;
-using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Logging;
 
 namespace Dipl.Business.Services;
 
 public class RequestLinksService(
     IStoreService fileStoreService,
     AppDbContext dbContext,
-    NavigationManager navigationManager,
     EmailSenderService emailSenderService,
-    UsersService usersService,
-    ILogger<RequestLinksService> logger)
+    UsersService usersService)
 {
     public async Task<RequestLink> CreateLink(RequestLinkModel model)
     {
@@ -25,20 +21,28 @@ public class RequestLinksService(
             LinkTitle = model.LinkName,
             Message = model.MessageForUser,
             NotifyOnUpload = model.NotifyOnUpload,
-            Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!
+            Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!,
+            UploadSlots = model.SendTo.Select(sendto => new RequestLinkUploadSlot
+            {
+                Closed = false,
+                Email = sendto,
+            }).ToList()
         };
 
+        foreach (var userDirectory in link.UploadSlots)
+            await fileStoreService.CreateDirectoryIfNotExists(link.Folder + "/" + userDirectory.Email);
+        
         await fileStoreService.CreateDirectoryIfNotExists(link.Folder);
         await dbContext.RequestLinks.AddAsync(link);
         await dbContext.SaveChangesAsync();
 
-        var linkUrl = navigationManager.ToAbsoluteUri($"/link/request/{link.LinkId}");
         await emailSenderService.NotifyOfRequest(model, link.LinkId);
 
         return link;
     }
 
-    public async Task NotifyFileRequestUpload(NotifyRequestUploadedModel model, CancellationToken cancellationToken = default)
+    public async Task NotifyFileRequestUpload(NotifyRequestUploadedModel model,
+        CancellationToken cancellationToken = default)
     {
         await emailSenderService.NotifyUserUploadedToRequestLink(model, cancellationToken);
     }

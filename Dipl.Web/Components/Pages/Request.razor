@@ -1,29 +1,43 @@
 @page "/request/{linkId:guid}/{responderEmail}"
+@using Dipl.Business
+@using Dipl.Business.Entities
 @using Dipl.Web.Models
 @using Dipl.Web.Services
 
 @inject FileManagerService FileManagerService
+@inject AppDbContext DbContext
 
 @rendermode InteractiveServer
 
-<Validations @ref="_validations" ValidateOnLoad="false">
-    <Field>
-        <FieldLabel>Message for user</FieldLabel>
-        <FieldBody>
-            <MemoEdit Rows="5" @bind-Text="@_model.Message" Placeholder="Message for user..."></MemoEdit>
-        </FieldBody>
-    </Field>
+<Container>
+    @if (!_closed && !LinkIsClosed())
+    {
+        <Validations @ref="_validations" ValidateOnLoad="false">
+            <Field>
+                <FieldLabel>Message for user</FieldLabel>
+                <FieldBody>
+                    <MemoEdit Rows="5" @bind-Text="@_model.Message" Placeholder="Message for user..."></MemoEdit>
+                </FieldBody>
+            </Field>
 
-    <Field>
-        <FieldLabel>Upload files here</FieldLabel>
-        <FieldBody>
-            <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"/>
-        </FieldBody>
-    </Field>
+            <Field>
+                <FieldLabel>Upload files here</FieldLabel>
+                <FieldBody>
+                    <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"/>
+                </FieldBody>
+            </Field>
 
-    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
-</Validations>
+            <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+        </Validations>
+    }
+    else
+    {
+        <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
+            Files successfully uploaded!
+        </Div>
+    }
 
+</Container>
 
 @code {
 
@@ -35,11 +49,20 @@
 
     private Validations _validations = null!;
     private readonly RequestLinkResponseModel _model = new();
+    private bool _closed;
 
-    protected override void OnParametersSet()
+    private RequestLink RequestLink = null!;
+
+    protected override async Task OnParametersSetAsync()
     {
         _model.LinkId = LinkId;
         _model.ResponderEmail = ResponderEmail;
+        RequestLink = await DbContext.RequestLinks.FindAsync(LinkId);
+    }
+
+    private bool LinkIsClosed()
+    {
+        return RequestLink.UploadSlots.FirstOrDefault(x => x.Email == ResponderEmail)?.Closed ?? true;
     }
 
     private async Task Submit()
@@ -48,6 +71,7 @@
             return;
 
         await FileManagerService.RespondToFileRequest(_model);
+        _closed = true;
     }
 
 }

@@ -7,20 +7,7 @@
 @rendermode InteractiveServer
 
 <PageTitle>Home</PageTitle>
-@* *@
-@* <Container> *@
-@*     <Card Margin="Margin.Is2.FromTop"> *@
-@*         <CardBody> *@
-@*             <CardTitle Size="3">Upload or request files</CardTitle> *@
-@*             <Button Color="Color.Primary" Type="ButtonType.Link" To="/upload">Upload file</Button> *@
-@*             <AuthorizeView> *@
-@*                 <Authorized> *@
-@*                     <Button Color="Color.Secondary" Type="ButtonType.Link" To="/request">Request file</Button> *@
-@*                 </Authorized> *@
-@*             </AuthorizeView> *@
-@*         </CardBody> *@
-@*     </Card> *@
-@* </Container> *@
+
 <Container>
     <Card>
         <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
@@ -30,9 +17,10 @@
                 </Button>
                 @if (IsLoggedIn)
                 {
-                    <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Primary : Color.Light"
+                    <Button Size="Size.Large" Border="Border.RoundedZero"
+                            Color="IsRequest ? Color.Primary : Color.Light"
                             Clicked="() => IsRequest = true">Request files
-                    </Button>    
+                    </Button>
                 }
             </CardTitle>
         </CardHeader>

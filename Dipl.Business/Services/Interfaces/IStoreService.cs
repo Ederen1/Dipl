@@ -4,7 +4,8 @@ namespace Dipl.Business.Services.Interfaces;
 
 public interface IStoreService
 {
-    public Task InsertFile(string fileName, string folder, Stream contents, CancellationToken cancellationToken = default);
+    public Task InsertFile(string fileName, string folder, Stream contents,
+        CancellationToken cancellationToken = default);
 
     public Task CreateDirectoryIfNotExists(string name);
     public Task<bool> DirectoryExists(string name);

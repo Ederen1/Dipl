@@ -1,10 +1,8 @@
-using System.Net;
 using System.Net.Mail;
 using Dipl.Business.EmailModels;
 using Dipl.Business.EmailTemplates;
 using Dipl.Business.Entities;
 using Dipl.Business.Models;
-using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Configs;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -24,32 +22,34 @@ public class EmailSenderService(
 
     public async Task NotifyOfRequest(RequestLinkModel model, Guid linkId)
     {
-        var newModel = new NotifyUserRequestedModel
+        var models = model.SendTo.Select(sendTo => new NotifyUserRequestedModel
         {
             Model = model,
-            RequestLinkId = linkId
-        };
+            RequestLinkId = linkId,
+            CurrentlySendingTo = sendTo
+        });
 
-        var body = await RenderTemplate<NotifyUserRequested>(newModel);
+        var renderedTemplates = await Task.WhenAll(models.Select(RenderTemplate<NotifyUserRequested>));
         var sender = await usersService.GetCurrentUser();
 
-        var email = new MailMessage
+        var emails = renderedTemplates.Select((template, i) => new MailMessage
         {
-            From = Sender,
-            To = { string.Join(',', model.SendTo) },
+            From = new MailAddress(sender.Email),
+            To = { model.SendTo[i] },
             Subject = $"User {sender.UserName} is sending you files",
-            Body = body,
+            Body = template,
             IsBodyHtml = true
-        };
+        });
 
-        try
-        {
-            await smtpClient.SendMailAsync(email);
-        }
-        catch
-        {
-            logger.LogError("Unable to send email to {receiver}", string.Join(',', model.SendTo));
-        }
+        foreach (var email in emails)
+            try
+            {
+                await smtpClient.SendMailAsync(email);
+            }
+            catch
+            {
+                logger.LogError("Unable to send email to {receiver}", string.Join(',', model.SendTo));
+            }
     }
 
     public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model)
@@ -57,7 +57,7 @@ public class EmailSenderService(
         var newModel = new NotifyUserUploadedModel
         {
             Model = model,
-            UploadLinkId = link.UploadLinkId
+            UploadLinkId = link.LinkId
         };
 
         var body = await RenderTemplate<NotifyUserUploaded>(newModel);

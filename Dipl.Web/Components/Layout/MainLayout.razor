@@ -15,6 +15,15 @@
             </BarBrand>
             <BarToggler/>
             <BarMenu>
+                <BarStart>
+                    <AuthorizeView>
+                        <Authorized>
+                            <BarItem>
+                                <BarLink To="/manageLinks">Manage links</BarLink>
+                            </BarItem>
+                        </Authorized>
+                    </AuthorizeView>
+                </BarStart>
                 <BarEnd>
                     <BarItem>
                         <AuthorizeView>
@@ -22,7 +31,8 @@
                                 <Button Color="Color.Primary" Type="ButtonType.Link" To="@ReturnUrl">Log in</Button>
                             </NotAuthorized>
                             <Authorized>
-                                <Button Color="Color.Secondary" Type="ButtonType.Link" To="Account/Logout">Logout</Button>
+                                <Button Color="Color.Secondary" Type="ButtonType.Link" To="Account/Logout">Logout
+                                </Button>
                             </Authorized>
                         </AuthorizeView>
                     </BarItem>

@@ -1,10 +1,12 @@
 @using Dipl.Common.Util
 @rendermode InteractiveServer
 
-<div class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))">
+<div
+    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))">
     @foreach (var email in Value)
     {
-        <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small" CloseClicked="() => RemoveEmail(email)">
+        <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small"
+               CloseClicked="() => RemoveEmail(email)">
             <span class="pe-1">@email</span>
         </Badge>
     }
@@ -21,7 +23,7 @@
 @code {
 
     [Parameter]
-    public List<string> Value { get ; set; } = [];
+    public List<string> Value { get; set; } = [];
 
     [Parameter]
     public EventCallback<List<string>> ValueChanged { get; set; }
@@ -34,12 +36,12 @@
 
     private const string ValidStyle = "outline: none !important; box-shadow: none !important; border-width: 0 0 1px 0 !important; border-radius: 0 !important; border-color: rgb(206, 212, 218); !important; background-image: none !important;";
     private const string InvalidStyle = ValidStyle + "border-color: red !important";
-    
+
     private void RemoveEmail(string email)
     {
         Value.Remove(email);
     }
-    
+
     private async Task KeyDown(KeyboardEventArgs args)
     {
         if (args.Key != "Enter")
@@ -75,4 +77,5 @@
 
         await SetEmail(email);
     }
+
 }

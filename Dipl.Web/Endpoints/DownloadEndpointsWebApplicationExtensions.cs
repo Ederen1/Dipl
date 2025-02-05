@@ -17,7 +17,8 @@ public static class DownloadEndpointsWebApplicationExtensions
                 var files = await storeService.List(link.Folder);
 
                 // Set the Content-Disposition header for the file name
-                context.Response.Headers.ContentDisposition = $"attachment; filename=\"{WebUtility.UrlEncode(link.LinkTitle)}.zip\";";
+                context.Response.Headers.ContentDisposition =
+                    $"attachment; filename=\"{WebUtility.UrlEncode(link.LinkTitle)}.zip\";";
                 // Set the content type for ZIP files
                 context.Response.Headers.ContentType = "application/zip";
 

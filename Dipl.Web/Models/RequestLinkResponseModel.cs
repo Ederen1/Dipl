@@ -11,16 +11,19 @@ public class RequestLinkResponseModel
     public Guid LinkId { get; set; }
     public string ResponderEmail { get; set; } = "";
 
-    public NotifyRequestUploadedModel MapToNotifyRequestUploadedModel(string? linkTitle, string emailTo) => new()
+    public NotifyRequestUploadedModel MapToNotifyRequestUploadedModel(string? linkTitle, string emailTo)
     {
-        Message = Message,
-        ResponderEmail = ResponderEmail,
-        LinkTitle = linkTitle ?? "",
-        EmailTo = emailTo,
-        Files = FilesToUpload.Select(x => new FileInfoModel
+        return new NotifyRequestUploadedModel
         {
-            Name = x.Name,
-            Size = x.Size
-        }).ToArray()
-    };
+            Message = Message,
+            ResponderEmail = ResponderEmail,
+            LinkTitle = linkTitle ?? "",
+            EmailTo = emailTo,
+            Files = FilesToUpload.Select(x => new FileInfoModel
+            {
+                Name = x.Name,
+                Size = x.Size
+            }).ToArray()
+        };
+    }
 }

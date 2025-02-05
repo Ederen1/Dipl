@@ -8,48 +8,58 @@
 
 @rendermode InteractiveServer
 
-<Validations @ref="_validations" ValidateOnLoad="false">
-    <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
+@if (!_closed)
+{
+    <Validations @ref="_validations" ValidateOnLoad="false">
+        <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
+            <Field>
+                <FieldLabel>Send to</FieldLabel>
+                <FieldBody>
+                    <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
+                                       @bind-Value="_model.SendTo"></MultipleEmailEdit>
+                    @if (_emailToValidationStatus == ValidationStatus.Error)
+                    {
+                        <Span TextColor="TextColor.Danger"
+                              TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                    }
+                </FieldBody>
+            </Field>
+        </Validation>
+
+        <Validation Validator="ValidationRule.IsNotEmpty">
+            <Field>
+                <FieldLabel>Link name</FieldLabel>
+                <FieldBody>
+                    <TextEdit @bind-Text="@_model.LinkName" Placeholder="Enter link name...">
+                        <Feedback>
+                            <ValidationError>Enter link name</ValidationError>
+                        </Feedback>
+                    </TextEdit>
+                </FieldBody>
+            </Field>
+        </Validation>
+
         <Field>
-            <FieldLabel>Send to</FieldLabel>
+            <FieldLabel>Message for user</FieldLabel>
             <FieldBody>
-                <MultipleEmailEdit ValidationStatus="_emailToValidationStatus" @bind-Value="_model.SendTo"></MultipleEmailEdit>
-                @if (_emailToValidationStatus == ValidationStatus.Error)
-                {
-                    <Span TextColor="TextColor.Danger" TextSize="TextSize.Small">Enter at least one valid email address</Span>
-                }
+                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."></MemoEdit>
             </FieldBody>
         </Field>
-    </Validation>
 
-    <Validation Validator="ValidationRule.IsNotEmpty">
         <Field>
-            <FieldLabel>Link name</FieldLabel>
-            <FieldBody>
-                <TextEdit @bind-Text="@_model.LinkName" Placeholder="Enter link name...">
-                    <Feedback>
-                        <ValidationError>Enter link name</ValidationError>
-                    </Feedback>
-                </TextEdit>
-            </FieldBody>
+            <Check @bind-Checked="@_model.NotifyOnUpload">
+                Notify me when files are uploaded
+            </Check>
         </Field>
-    </Validation>
 
-    <Field>
-        <FieldLabel>Message for user</FieldLabel>
-        <FieldBody>
-            <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."></MemoEdit>
-        </FieldBody>
-    </Field>
+        <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Create Link</Button>
+    </Validations>
+}
+else
+{
+    <Div>Request link created</Div>
+}
 
-    <Field>
-        <Check @bind-Checked="@_model.NotifyOnUpload">
-            Notify me when files are uploaded
-        </Check>
-    </Field>
-
-    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Create Link</Button>
-</Validations>
 
 @code {
     private Validations _validations = null!;
@@ -57,6 +67,7 @@
     private string _guestEmail = "";
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
     private CancellationTokenSource _cts = new();
+    private bool _closed;
 
     public async ValueTask DisposeAsync()
     {
@@ -70,6 +81,7 @@
             return;
 
         await RequestLinksService.CreateLink(_model);
+        _closed = true;
     }
 
     private void ValidateEmails(ValidatorEventArgs e)

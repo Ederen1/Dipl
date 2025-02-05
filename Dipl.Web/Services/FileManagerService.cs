@@ -1,6 +1,5 @@
 ﻿using Blazorise;
 using Dipl.Business;
-using Dipl.Business.Models;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Web.Models;
@@ -13,7 +12,8 @@ public class FileManagerService(
     UserAuthenticationService userAuthenticationService,
     UploadLinksService uploadLinksService,
     RequestLinksService requestLinksService,
-    AppDbContext dbContext)
+    AppDbContext dbContext,
+    ILogger<FileManagerService> logger)
 {
     private const int UploadChunkSize = 4;
 
@@ -30,11 +30,14 @@ public class FileManagerService(
     public async Task RespondToFileRequest(RequestLinkResponseModel model,
         CancellationToken cancellationToken = default)
     {
-        var link = await dbContext.RequestLinks.Include(x => x.CreatedBy)
+        var link = await dbContext.RequestLinks
             .FirstOrDefaultAsync(x => x.LinkId == model.LinkId, cancellationToken);
-        // TODO: Fix
+
         if (link is null)
-            throw new Exception($"Link {model.LinkId} not found in database");
+        {
+            logger.LogError("Link by id: '{}' not found in database", model.LinkId);
+            return;
+        }
 
         await UploadFiles(model.FilesToUpload, link.Folder, cancellationToken);
 
@@ -43,6 +46,16 @@ public class FileManagerService(
             var notifyModel = model.MapToNotifyRequestUploadedModel(link.LinkTitle, link.CreatedBy.Email);
             await requestLinksService.NotifyFileRequestUpload(notifyModel, cancellationToken);
         }
+
+        var slot = link.UploadSlots.FirstOrDefault(slot => slot.Email == model.ResponderEmail);
+        if (slot == null)
+        {
+            logger.LogError("Slot for link {} not found", link.Folder);
+            return;
+        }
+
+        slot.Closed = true;
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task UploadFiles(IEnumerable<IFileEntry> files, string folder, CancellationToken cancellationToken)

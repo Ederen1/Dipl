@@ -12,7 +12,8 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
 {
     private readonly string _basePath = options.Value.BasePath;
 
-    public async Task InsertFile(string fileName, string folder, Stream contents, CancellationToken cancellationToken = default)
+    public async Task InsertFile(string fileName, string folder, Stream contents,
+        CancellationToken cancellationToken = default)
     {
         var fullPath = Path.Combine(_basePath, folder, fileName);
         logger.LogInformation("Uploading file: {}", fileName);

@@ -84,7 +84,7 @@ namespace Dipl.Business.Migrations
 
             modelBuilder.Entity("Dipl.Business.Entities.RequestLink", b =>
                 {
-                    b.Property<Guid>("RequestLinkId")
+                    b.Property<Guid>("LinkId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -102,9 +102,6 @@ namespace Dipl.Business.Migrations
 
                     b.Property<DateTime>("LastAccessed")
                         .HasColumnType("TEXT");
-
-                    b.Property<bool>("LinkClosed")
-                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LinkTitle")
                         .HasMaxLength(200)
@@ -120,7 +117,7 @@ namespace Dipl.Business.Migrations
                     b.Property<int>("PermissionId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("RequestLinkId");
+                    b.HasKey("LinkId");
 
                     b.HasIndex("CreatedById");
 
@@ -129,9 +126,33 @@ namespace Dipl.Business.Migrations
                     b.ToTable("RequestLinks");
                 });
 
+            modelBuilder.Entity("Dipl.Business.Entities.RequestLinkUploadSlot", b =>
+                {
+                    b.Property<Guid>("RequestLinkUploadSlotId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Closed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RequestLinkLinkId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("RequestLinkUploadSlotId");
+
+                    b.HasIndex("RequestLinkLinkId");
+
+                    b.ToTable("RequestLinkUploadSlots");
+                });
+
             modelBuilder.Entity("Dipl.Business.Entities.UploadLink", b =>
                 {
-                    b.Property<Guid>("UploadLinkId")
+                    b.Property<Guid>("LinkId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
@@ -150,9 +171,6 @@ namespace Dipl.Business.Migrations
                     b.Property<DateTime>("LastAccessed")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("LinkClosed")
-                        .HasColumnType("INTEGER");
-
                     b.Property<string>("LinkTitle")
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
@@ -164,7 +182,7 @@ namespace Dipl.Business.Migrations
                     b.Property<int>("PermissionId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("UploadLinkId");
+                    b.HasKey("LinkId");
 
                     b.HasIndex("CreatedById");
 
@@ -268,6 +286,13 @@ namespace Dipl.Business.Migrations
                     b.Navigation("Permission");
                 });
 
+            modelBuilder.Entity("Dipl.Business.Entities.RequestLinkUploadSlot", b =>
+                {
+                    b.HasOne("Dipl.Business.Entities.RequestLink", null)
+                        .WithMany("UploadSlots")
+                        .HasForeignKey("RequestLinkLinkId");
+                });
+
             modelBuilder.Entity("Dipl.Business.Entities.UploadLink", b =>
                 {
                     b.HasOne("Dipl.Business.Entities.User", "CreatedBy")
@@ -321,6 +346,11 @@ namespace Dipl.Business.Migrations
                 {
                     b.Navigation("Permission")
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Dipl.Business.Entities.RequestLink", b =>
+                {
+                    b.Navigation("UploadSlots");
                 });
 
             modelBuilder.Entity("Dipl.Business.Entities.User", b =>

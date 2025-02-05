@@ -1,0 +1,144 @@
+@page "/manageLinks"
+@using Dipl.Business
+@using Dipl.Business.Entities
+@using Dipl.Business.Services
+@using Microsoft.EntityFrameworkCore
+@rendermode InteractiveServer
+
+@inject UsersService UsersService
+@inject AppDbContext DbContext
+
+<Container>
+    <h3>Request links</h3>
+    <Table Responsive="true" Striped="true" Hoverable="true">
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Title</TableHeaderCell>
+                <TableHeaderCell>Message</TableHeaderCell>
+                <TableHeaderCell>Notify On Upload</TableHeaderCell>
+                <TableHeaderCell Width="Width.Auto">Actions</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var requestLink in _requestLinks)
+            {
+                <TableRow>
+                    <TableRowCell>
+                        @requestLink.LinkTitle
+                    </TableRowCell>
+                    <TableRowCell>@requestLink.Message</TableRowCell>
+                    <TableRowCell>@(requestLink.NotifyOnUpload ? "Yes" : "No")</TableRowCell>
+                    <TableRowCell Style="width: 0">
+                        <ConfirmButton Color="Color.Danger" Size="Size.Small"
+                                       OnConfirm="@(() => RemoveRequestLink(requestLink))">
+                            Remove
+                        </ConfirmButton>
+                    </TableRowCell>
+                </TableRow>
+                <!-- Nested row for UploadSlots grouping -->
+                <TableRow>
+                    <TableRowCell colspan="5">
+                        @if (requestLink.UploadSlots.Any())
+                        {
+                            <Table Narrow Responsive="true" Striped="true" Hoverable="true" Class="mb-0">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHeaderCell>Email</TableHeaderCell>
+                                        <TableHeaderCell>Closed</TableHeaderCell>
+                                        <TableHeaderCell>Actions</TableHeaderCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    @foreach (var slot in requestLink.UploadSlots)
+                                    {
+                                        <TableRow>
+                                            <TableRowCell>@slot.Email</TableRowCell>
+                                            <TableRowCell>@(slot.Closed ? "Yes" : "No")</TableRowCell>
+                                            <TableRowCell Style="width: 0">
+                                                <ConfirmButton Color="Color.Danger" Size="Size.Small"
+                                                               OnConfirm="@(() => RemoveUploadSlot(requestLink, slot))">
+                                                    Remove Slot
+                                                </ConfirmButton>
+                                            </TableRowCell>
+                                        </TableRow>
+                                    }
+                                </TableBody>
+                            </Table>
+                        }
+                        else
+                        {
+                            <em>No upload slots available.</em>
+                        }
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+    <h3 class="mt-4">Upload Links</h3>
+    <Table Responsive="true" Striped="true" Hoverable="true">
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Title</TableHeaderCell>
+                <TableHeaderCell>Message</TableHeaderCell>
+                <TableHeaderCell>Actions</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var uploadLink in _uploadLinks)
+            {
+                <TableRow>
+                    <TableRowCell>
+                        @uploadLink.LinkTitle
+                    </TableRowCell>
+                    <TableRowCell>@uploadLink.Message</TableRowCell>
+                    <TableRowCell>
+                        <Button Color="Color.Danger" Size="Size.Small"
+                                Clicked="@(() => RemoveUploadLink(uploadLink))">
+                            Remove
+                        </Button>
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</Container>
+
+@code {
+    private List<RequestLink> _requestLinks = [];
+    private List<UploadLink> _uploadLinks = [];
+    private User _currentUser = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUser = await UsersService.GetCurrentUser();
+        await ReloadData();
+    }
+
+    private async Task ReloadData()
+    {
+        _requestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+        _uploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+    }
+
+    private async Task RemoveRequestLink(RequestLink link)
+    {
+        DbContext.RequestLinks.Remove(link);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+    private async Task RemoveUploadLink(UploadLink link)
+    {
+        DbContext.UploadLinks.Remove(link);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+    private async Task RemoveUploadSlot(RequestLink parentLink, RequestLinkUploadSlot slot)
+    {
+        parentLink.UploadSlots.Remove(slot);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+}
