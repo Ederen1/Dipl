@@ -20,28 +20,31 @@ public class EmailSenderService(
 {
     private MailAddress Sender => new(settings.Value.SenderEmail);
 
-    public async Task NotifyOfRequest(RequestLinkModel model, Guid linkId)
+    public async Task NotifyOfRequest(RequestLinkModel model, RequestLink link, string senderName)
     {
-        var models = model.SendTo.Select(sendTo => new NotifyUserRequestedModel
+        var models = link.UploadSlots.Select(slot => new NotifyUserRequestedModel
         {
             Model = model,
-            RequestLinkId = linkId,
-            CurrentlySendingTo = sendTo
+            RequestLinkId = link.LinkId,
+            CurrentlySendingTo = slot.Email,
+            SenderName = senderName,
+            SlotId = slot.RequestLinkUploadSlotId
         });
-
+        
         var renderedTemplates = await Task.WhenAll(models.Select(RenderTemplate<NotifyUserRequested>));
-        var sender = await usersService.GetCurrentUser();
+        var currentUser = await usersService.GetCurrentUser();
 
         var emails = renderedTemplates.Select((template, i) => new MailMessage
         {
-            From = new MailAddress(sender.Email),
+            From = Sender,
             To = { model.SendTo[i] },
-            Subject = $"User {sender.UserName} is sending you files",
+            Subject = $"{currentUser.UserName} is requesting files from you",
             Body = template,
             IsBodyHtml = true
         });
 
         foreach (var email in emails)
+        {
             try
             {
                 await smtpClient.SendMailAsync(email);
@@ -50,9 +53,11 @@ public class EmailSenderService(
             {
                 logger.LogError("Unable to send email to {receiver}", string.Join(',', model.SendTo));
             }
+        }
     }
 
-    public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model)
+    public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model,
+        CancellationToken cancellationToken = default)
     {
         var newModel = new NotifyUserUploadedModel
         {
@@ -73,7 +78,7 @@ public class EmailSenderService(
 
         try
         {
-            await smtpClient.SendMailAsync(email);
+            await smtpClient.SendMailAsync(email, cancellationToken);
         }
         catch
         {
@@ -89,8 +94,8 @@ public class EmailSenderService(
         var email = new MailMessage
         {
             From = Sender,
-            To = { string.Join(',', model.EmailTo) },
-            Subject = $"User {model.ResponderEmail} uploaded files to {model.LinkTitle}",
+            To = { model.EmailTo },
+            Subject = $"User {model.UploadSlot.Email} uploaded files to {model.LinkTitle}",
             Body = body,
             IsBodyHtml = true
         };

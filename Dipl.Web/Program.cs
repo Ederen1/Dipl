@@ -62,7 +62,9 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
-    await db.MigrateAsync();
+    db.EnsureDeleted();
+    db.EnsureCreated();
+    // await db.MigrateAsync();
 }
 
 app.MapLoginEndpoints();

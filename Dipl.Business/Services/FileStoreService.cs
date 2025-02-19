@@ -85,7 +85,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         return Task.CompletedTask;
     }
 
-    public Task<FileInfo[]> List(string path)
+    public Task<FileInfo[]> ListFolder(string path)
     {
         var fullPath = _basePath + path;
 

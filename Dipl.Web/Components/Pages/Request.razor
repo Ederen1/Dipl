@@ -1,4 +1,4 @@
-@page "/request/{linkId:guid}/{responderEmail}"
+@page "/request/{linkId:guid}/{slotId:guid}"
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Web.Models
@@ -40,29 +40,25 @@
 </Container>
 
 @code {
-
     [Parameter]
     public Guid LinkId { get; set; }
-
     [Parameter]
-    public string ResponderEmail { get; set; } = null!;
+    public Guid SlotId { get; set; }
 
     private Validations _validations = null!;
     private readonly RequestLinkResponseModel _model = new();
     private bool _closed;
 
-    private RequestLink RequestLink = null!;
-
+    private RequestLinkUploadSlot? Slot { get; set; }
+    
     protected override async Task OnParametersSetAsync()
     {
-        _model.LinkId = LinkId;
-        _model.ResponderEmail = ResponderEmail;
-        RequestLink = await DbContext.RequestLinks.FindAsync(LinkId);
+        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId);
     }
 
     private bool LinkIsClosed()
     {
-        return RequestLink.UploadSlots.FirstOrDefault(x => x.Email == ResponderEmail)?.Closed ?? true;
+        return Slot?.Closed ?? true;
     }
 
     private async Task Submit()
@@ -70,7 +66,10 @@
         if (!await _validations.ValidateAll())
             return;
 
-        await FileManagerService.RespondToFileRequest(_model);
+        if (Slot is null)
+            return;
+
+        await FileManagerService.RespondToFileRequest(_model, Slot);
         _closed = true;
     }
 

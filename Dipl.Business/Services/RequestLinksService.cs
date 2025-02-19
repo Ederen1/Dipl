@@ -6,7 +6,7 @@ using Dipl.Business.Services.Interfaces;
 namespace Dipl.Business.Services;
 
 public class RequestLinksService(
-    IStoreService fileStoreService,
+    IStoreService storeService,
     AppDbContext dbContext,
     EmailSenderService emailSenderService,
     UsersService usersService)
@@ -17,11 +17,9 @@ public class RequestLinksService(
         var link = new RequestLink
         {
             CreatedById = createdBy.UserId,
-            Folder = $"{createdBy.UserId}/{Guid.NewGuid()}",
             LinkTitle = model.LinkName,
             Message = model.MessageForUser,
             NotifyOnUpload = model.NotifyOnUpload,
-            Permission = (await dbContext.Permissions.FindAsync(Permission.GuestPermissionId))!,
             UploadSlots = model.SendTo.Select(sendto => new RequestLinkUploadSlot
             {
                 Closed = false,
@@ -29,14 +27,15 @@ public class RequestLinksService(
             }).ToList()
         };
 
-        foreach (var userDirectory in link.UploadSlots)
-            await fileStoreService.CreateDirectoryIfNotExists(link.Folder + "/" + userDirectory.Email);
+        await storeService.CreateDirectoryIfNotExists(link.LinkId.ToString());
         
-        await fileStoreService.CreateDirectoryIfNotExists(link.Folder);
+        foreach (var userDirectory in link.UploadSlots)
+            await storeService.CreateDirectoryIfNotExists(link.LinkId + "/" + userDirectory.RequestLinkUploadSlotId);
+        
         await dbContext.RequestLinks.AddAsync(link);
         await dbContext.SaveChangesAsync();
 
-        await emailSenderService.NotifyOfRequest(model, link.LinkId);
+        await emailSenderService.NotifyOfRequest(model, link, createdBy.UserName);
 
         return link;
     }

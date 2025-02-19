@@ -1,5 +1,6 @@
 ﻿using Blazorise;
 using Dipl.Business;
+using Dipl.Business.Entities;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Web.Models;
@@ -9,8 +10,8 @@ namespace Dipl.Web.Services;
 
 public class FileManagerService(
     IStoreService storeService,
-    UserAuthenticationService userAuthenticationService,
-    UploadLinksService uploadLinksService,
+    EmailSenderService emailSenderService,
+    UsersService usersService,
     RequestLinksService requestLinksService,
     AppDbContext dbContext,
     ILogger<FileManagerService> logger)
@@ -19,42 +20,38 @@ public class FileManagerService(
 
     public async Task<Guid> UploadAllToFolder(FileUploadModel model, CancellationToken cancellationToken = default)
     {
-        var userEmail = (await userAuthenticationService.GetUserInfo())?.Email;
-        var mappedModel = model.MapToCreateUploadModel(userEmail);
+        var createdBy = await usersService.GetCurrentUser();
+        var mappedModel = model.MapToCreateUploadModel(createdBy.UserName);
 
-        await UploadFiles(model.FilesToUpload, mappedModel.FullFolderName, cancellationToken);
+        var link = new UploadLink
+        {
+            CreatedById = createdBy.UserId,
+            Message = model.MessageForUser,
+            LinkTitle = model.LinkTitle
+        };
 
-        return await uploadLinksService.GenerateLinkAfterUploadAndNotifyUser(mappedModel);
+        await dbContext.UploadLinks.AddAsync(link, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        
+        await UploadFiles(model.FilesToUpload, link.LinkId.ToString(), cancellationToken);
+
+        await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
+        return link.LinkId;
     }
 
-    public async Task RespondToFileRequest(RequestLinkResponseModel model,
+    public async Task RespondToFileRequest(RequestLinkResponseModel model, RequestLinkUploadSlot slot,
         CancellationToken cancellationToken = default)
     {
-        var link = await dbContext.RequestLinks
-            .FirstOrDefaultAsync(x => x.LinkId == model.LinkId, cancellationToken);
-
-        if (link is null)
-        {
-            logger.LogError("Link by id: '{}' not found in database", model.LinkId);
-            return;
-        }
-
-        await UploadFiles(model.FilesToUpload, link.Folder, cancellationToken);
+        var link = slot.RequestLink;
+        await UploadFiles(model.FilesToUpload, link.LinkId + "/" + slot.RequestLinkUploadSlotId, cancellationToken);
+        slot.Closed = true;
 
         if (link.NotifyOnUpload)
         {
-            var notifyModel = model.MapToNotifyRequestUploadedModel(link.LinkTitle, link.CreatedBy.Email);
+            var notifyModel = model.MapToNotifyRequestUploadedModel(link, slot);
             await requestLinksService.NotifyFileRequestUpload(notifyModel, cancellationToken);
         }
 
-        var slot = link.UploadSlots.FirstOrDefault(slot => slot.Email == model.ResponderEmail);
-        if (slot == null)
-        {
-            logger.LogError("Slot for link {} not found", link.Folder);
-            return;
-        }
-
-        slot.Closed = true;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

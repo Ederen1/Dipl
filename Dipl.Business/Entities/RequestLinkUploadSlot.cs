@@ -8,4 +8,7 @@ public class RequestLinkUploadSlot
     [MaxLength(100)]
     public required string Email { get; set; }
     public required bool Closed { get; set; }
+    
+    public Guid RequestLinkId { get; set; }
+    public virtual RequestLink RequestLink { get; set; }
 }

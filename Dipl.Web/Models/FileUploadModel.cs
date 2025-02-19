@@ -1,5 +1,6 @@
 using Blazorise;
 using Dipl.Business.Models;
+using Dipl.Common.Util;
 
 namespace Dipl.Web.Models;
 
@@ -16,7 +17,7 @@ public class FileUploadModel
         return new CreateUploadLinkModel
         {
             Sender = userName ?? GuestEmail!,
-            FullFolderName = Path.Combine(userName ?? GuestEmail!, SanitizePath(LinkTitle)),
+            FullFolderName = Path.Combine(userName ?? GuestEmail!, FileUtils.SanitizePath(LinkTitle)),
             LinkTitle = LinkTitle,
             MessageForUser = MessageForUser,
             EmailTo = EmailTo,
@@ -26,15 +27,5 @@ public class FileUploadModel
                 Size = f.Size
             }).ToList()
         };
-    }
-
-    private static string SanitizePath(string path)
-    {
-        var notAllowed = Path.GetInvalidPathChars().Concat(Path.GetInvalidFileNameChars());
-
-        path = path.Replace(' ', '_');
-        path = path.ReplaceLineEndings("_");
-        path = new string(path.Where(c => !notAllowed.Contains(c)).ToArray());
-        return path;
     }
 }

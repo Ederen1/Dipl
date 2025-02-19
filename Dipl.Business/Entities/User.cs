@@ -15,6 +15,4 @@ public class User
 
     public virtual ICollection<UploadLink> UploadLinks { get; set; } = [];
     public virtual ICollection<RequestLink> RequestLinks { get; set; } = [];
-    public virtual ICollection<Group> Groups { get; set; } = [];
-    public virtual ICollection<Permission> PermissionsAssociatedWithThisUser { get; set; } = [];
 }

@@ -126,7 +126,7 @@
 <div class="container-wrapper">
     <div class="container">
         <div class="sender-info">
-            <span class="sender">@Model.ResponderEmail uploaded files</span>
+            <span class="sender">@Model.UploadSlot.Email uploaded files</span>
         </div>
 
         @if (!string.IsNullOrEmpty(Model.Message))
@@ -148,6 +148,15 @@
                     <div class="file-size">@(FileUtils.BytesToString(file.Size))</div>
                 </div>
             }
+        </div>
+
+        <div class="button-container">
+            <a class="button" style="color: #FFFFFF; text-decoration: none"
+               href="@($"{NavigationManager.BaseUri}link/{Model.Link.LinkId}/{Model.UploadSlot.RequestLinkUploadSlotId}")">
+                <span style="color: #FFFFFF; text-decoration: none">
+                    <font color="#FFFFFF">Get your files</font>
+                </span>
+            </a>
         </div>
     </div>
 </div>

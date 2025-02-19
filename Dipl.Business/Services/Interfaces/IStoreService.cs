@@ -13,6 +13,6 @@ public interface IStoreService
     public Task Delete(string path);
     public Task DeleteDirectory(string path, bool recursive = false);
     public Task Move(string source, string dest);
-    public Task<FileInfo[]> List(string path);
+    public Task<FileInfo[]> ListFolder(string path);
     public Task<FileInfo[]> Search(string name);
 }

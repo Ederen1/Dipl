@@ -102,7 +102,7 @@
     <div class="container">
         <div class="request-info">
             <span class="link-name">@Model.Model.LinkName</span>
-            <div class="request-text">Someone is requesting files from you</div>
+            <div class="request-text">@Model.SenderName is requesting files from you</div>
         </div>
 
         @if (!string.IsNullOrEmpty(Model.Model.MessageForUser))
@@ -113,7 +113,7 @@
 
         <div class="button-container">
             <a class="button" style="color: #FFFFFF; text-decoration: none"
-               href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}/{Model.CurrentlySendingTo}")">
+               href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}/{Model.SlotId}")">
                 <span style="color: #FFFFFF; text-decoration: none">
                     <font color="#FFFFFF">Upload your files</font>
                 </span>
@@ -123,7 +123,7 @@
         @if (Model.Model.NotifyOnUpload)
         {
             <div class="notify-info">
-                The requester will be notified when you upload files
+                @Model.SenderName will be notified when you upload files
             </div>
         }
     </div>
