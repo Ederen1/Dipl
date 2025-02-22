@@ -17,6 +17,14 @@ public static class DownloadEndpointsWebApplicationExtensions
                 var link = await dbContext.UploadLinks.FindAsync(linkId) ??
                            throw new Exception($"Unable to find link with id {linkId}");
                 var files = await storeService.ListFolder(link.LinkId.ToString());
+                if (files is null)
+                {
+                    app.Logger.LogError("Link folder {} does not exist", link.LinkId);
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+                
+                
                 var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
 
                 // Set the Content-Disposition header for the file name
@@ -71,6 +79,7 @@ public static class DownloadEndpointsWebApplicationExtensions
             {
                 app.Logger.LogError("Unable to find link by id {}", linkId);
                 context.Response.StatusCode = 404;
+                return;
             }
 
             var slot = link!.UploadSlots.FirstOrDefault(slot => slot.RequestLinkUploadSlotId == slotId);
@@ -78,9 +87,17 @@ public static class DownloadEndpointsWebApplicationExtensions
             {
                 app.Logger.LogError("Unable to find upload slot with id {} for link {}", slotId, link.LinkTitle);
                 context.Response.StatusCode = 404;
+                return;
             }
 
             var files = await storeService.ListFolder($"{linkId}/{slotId}");
+            if (files is null)
+            {
+                app.Logger.LogError("Link folder '{}/{}' does not exist", linkId, slotId);
+                context.Response.StatusCode = 404;
+                return;
+            }
+            
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
 
             // Set the Content-Disposition header for the file name

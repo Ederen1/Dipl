@@ -60,9 +60,9 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         return Task.FromResult<Stream>(File.Open(fullPath, FileMode.Open, FileAccess.Read));
     }
 
-    public Task Delete(string path)
+    public Task DeleteFile(string fileName, string folder)
     {
-        var fullPath = _basePath + path;
+        var fullPath = Path.Combine(_basePath, folder, fileName);
         File.Delete(fullPath);
         return Task.CompletedTask;
     }
@@ -72,6 +72,19 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         var fullPath = _basePath + path;
 
         Directory.Delete(fullPath, recursive);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteDirectoryContents(string path)
+    {
+        var fullPath = _basePath + path;
+
+        foreach (var file in Directory.GetFiles(fullPath))
+            File.Delete(file);
+
+        foreach (var directory in Directory.GetDirectories(fullPath))
+            Directory.Delete(directory, true);
+        
         return Task.CompletedTask;
     }
 
@@ -85,14 +98,16 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         return Task.CompletedTask;
     }
 
-    public Task<FileInfo[]> ListFolder(string path)
+    public Task<FileInfo[]?> ListFolder(string path)
     {
         var fullPath = _basePath + path;
 
         var directory = new DirectoryInfo(fullPath);
-        var found = directory.GetFileSystemInfos().MapToFileInfos(_basePath);
+        if (!directory.Exists)
+            return Task.FromResult<FileInfo[]?>(null);
 
-        return Task.FromResult(found);
+        var found = directory.GetFileSystemInfos().MapToFileInfos(_basePath);
+        return Task.FromResult<FileInfo[]?>(found);
     }
 
     public Task<FileInfo[]> Search(string name)

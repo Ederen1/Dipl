@@ -6,59 +6,74 @@
 
 @inject FileManagerService FileManagerService
 @inject AppDbContext DbContext
+@inject IConfiguration Configuration
 
-@rendermode InteractiveServer
 
 <Container>
-    @if (!_closed && !LinkIsClosed())
+    @if (_closed && !_canViewAfterClose)
+    {
+        <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
+            Files successfully uploaded!
+        </Div>
+    }
+    else
     {
         <Validations @ref="_validations" ValidateOnLoad="false">
             <Field>
                 <FieldLabel>Message for user</FieldLabel>
                 <FieldBody>
-                    <MemoEdit Rows="5" @bind-Text="@_model.Message" Placeholder="Message for user..."></MemoEdit>
+                    <MemoEdit Rows="5" @bind-Text="@_model.Message" Placeholder="Message for user..."
+                              Disabled="_disableEdit"></MemoEdit>
                 </FieldBody>
             </Field>
 
             <Field>
                 <FieldLabel>Upload files here</FieldLabel>
                 <FieldBody>
-                    <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"/>
+                    <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" Disabled="_disableEdit"/>
                 </FieldBody>
             </Field>
 
-            <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+            @if (_closed && _canReopen)
+            {
+                <Button Width="Width.Is100" Color="Color.Success"
+                        Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
+                </Button>
+            }
+            else if(!_closed)
+            {
+                <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
+                </Button>
+            }
         </Validations>
-    }
-    else
-    {
-        <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
-            Files successfully uploaded!
-        </Div>
     }
 
 </Container>
 
 @code {
+
     [Parameter]
     public Guid LinkId { get; set; }
+
     [Parameter]
     public Guid SlotId { get; set; }
 
     private Validations _validations = null!;
     private readonly RequestLinkResponseModel _model = new();
     private bool _closed;
+    private bool _canReopen;
+    private bool _canViewAfterClose;
+    private bool _disableEdit;
 
     private RequestLinkUploadSlot? Slot { get; set; }
-    
+
     protected override async Task OnParametersSetAsync()
     {
+        _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
+        _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
         Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId);
-    }
-
-    private bool LinkIsClosed()
-    {
-        return Slot?.Closed ?? true;
+        _closed = Slot?.Uploaded != null;
+        _disableEdit = _closed;
     }
 
     private async Task Submit()
@@ -69,6 +84,7 @@
         if (Slot is null)
             return;
 
+        _disableEdit = true;
         await FileManagerService.RespondToFileRequest(_model, Slot);
         _closed = true;
     }

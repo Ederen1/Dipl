@@ -6,7 +6,7 @@
 @inject RequestLinksService RequestLinksService
 @inject UserAuthenticationService UserAuthenticationService
 
-@rendermode InteractiveServer
+
 
 @if (!_closed)
 {
@@ -16,7 +16,7 @@
                 <FieldLabel>Send to</FieldLabel>
                 <FieldBody>
                     <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
-                                       @bind-Value="_model.SendTo"></MultipleEmailEdit>
+                                       @bind-Value="_createModel.SendTo"></MultipleEmailEdit>
                     @if (_emailToValidationStatus == ValidationStatus.Error)
                     {
                         <Span TextColor="TextColor.Danger"
@@ -30,7 +30,7 @@
             <Field>
                 <FieldLabel>Link name</FieldLabel>
                 <FieldBody>
-                    <TextEdit @bind-Text="@_model.LinkName" Placeholder="Enter link name...">
+                    <TextEdit @bind-Text="@_createModel.LinkName" Placeholder="Enter link name...">
                         <Feedback>
                             <ValidationError>Enter link name</ValidationError>
                         </Feedback>
@@ -42,12 +42,12 @@
         <Field>
             <FieldLabel>Message for user</FieldLabel>
             <FieldBody>
-                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."></MemoEdit>
+                <MemoEdit Rows="5" @bind-Text="@_createModel.MessageForUser" Placeholder="Message for user..."></MemoEdit>
             </FieldBody>
         </Field>
 
         <Field>
-            <Check @bind-Checked="@_model.NotifyOnUpload">
+            <Check @bind-Checked="@_createModel.NotifyOnUpload">
                 Notify me when files are uploaded
             </Check>
         </Field>
@@ -57,14 +57,14 @@
 }
 else
 {
-    <Div>Request link created</Div>
+    <div>Request link created</div>
+    <Button Margin="Margin.Is2.FromTop" Color="Color.Primary" Clicked="GoBack">Go back</Button>
 }
 
 
 @code {
     private Validations _validations = null!;
-    private RequestLinkModel _model = new();
-    private string _guestEmail = "";
+    private RequestLinkCreateModel _createModel = new();
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
     private CancellationTokenSource _cts = new();
     private bool _closed;
@@ -80,12 +80,19 @@ else
         if (!await _validations.ValidateAll())
             return;
 
-        await RequestLinksService.CreateLink(_model);
+        await RequestLinksService.CreateLink(_createModel);
         _closed = true;
     }
 
     private void ValidateEmails(ValidatorEventArgs e)
     {
-        e.Status = !_model.SendTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
+        e.Status = !_createModel.SendTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
     }
+
+    private void GoBack()
+    {
+        _closed = false;
+        _createModel = new RequestLinkCreateModel();
+    }
+
 }

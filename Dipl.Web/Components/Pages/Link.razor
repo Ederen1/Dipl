@@ -2,32 +2,42 @@
 @using Dipl.Business
 @using Dipl.Business.Services.Interfaces
 @using Dipl.Common.Types
+@using Dipl.Common.Util
 
 @inject IStoreService StoreService
 @inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
 
 <Container>
-    @{ var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId +"/" + SlotId.Value; }
-    <Row>
+    @{ var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId + "/" + SlotId.Value; }
+    <Row Margin="Margin.Is2.OnY">
+        <Column ColumnSize="ColumnSize.IsAuto">
+            @if (Files.Length == 1)
+            {
+                <Button Type="ButtonType.Link" Color="Color.Primary"
+                        To="@($"/download/{linkWithId}/{Files[0].Name}")"
+                        Download="@Files[0].Name">
+                    <Icon Name="IconName.Download" Class="me-2"/>
+                    Download file
+                </Button>
+            }
+            else if (Files.Length > 1)
+            {
+                <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
+                    <Icon Name="IconName.Download" Class="me-2"/>
+                    Download all files
+                </Button>
+            }
+        </Column>
+        <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
+            Copy link:
+        </Column>
         <Column>
-            <div class="my-2">
-                @if (Files.Length == 1)
-                {
-                    <Button Type="ButtonType.Link" Color="Color.Primary"
-                            To="@($"/download/{linkWithId}/{Files[0].Name}")"
-                            Download="@Files[0].Name">
-                        <Icon Name="IconName.Download" Class="me-2"/>
-                        Download file
-                    </Button>
-                }
-                else if (Files.Length > 1)
-                {
-                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
-                        <Icon Name="IconName.Download" Class="me-2"/>
-                        Download all files
-                    </Button>
-                }
-            </div>
+            <Div Class="input-group">
+                <TextEdit Disabled="true" Text="@NavigationManager.Uri"></TextEdit>
+                <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
+            </Div>
         </Column>
     </Row>
 
@@ -35,7 +45,8 @@
         <TableHeader>
             <TableRow>
                 <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Download</TableHeaderCell>
+                <TableHeaderCell>Size</TableHeaderCell>
+                <TableHeaderCell Width="Width.Auto">Download</TableHeaderCell>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -43,7 +54,8 @@
             {
                 <TableRow>
                     <TableRowCell>@file.Name</TableRowCell>
-                    <TableRowCell>
+                    <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
+                    <TableRowCell Style="width: 0;" Class="text-nowrap">
                         <Button Type="ButtonType.Link" Color="Color.Primary"
                                 To="@($"/download/{linkWithId}/{file.Name}")"
                                 Download="@file.Name">
@@ -74,7 +86,12 @@
         if (!linkExists)
             throw new Exception("Link not found");
 
-        Files = await StoreService.ListFolder($"{LinkId}/{SlotId}");
+        Files = await StoreService.ListFolder($"{LinkId}/{SlotId}") ?? [];
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", NavigationManager.Uri);
     }
 
 }

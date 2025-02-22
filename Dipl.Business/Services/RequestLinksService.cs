@@ -11,18 +11,19 @@ public class RequestLinksService(
     EmailSenderService emailSenderService,
     UsersService usersService)
 {
-    public async Task<RequestLink> CreateLink(RequestLinkModel model)
+    public async Task<RequestLink> CreateLink(RequestLinkCreateModel createModel)
     {
         var createdBy = await usersService.GetCurrentUser();
         var link = new RequestLink
         {
+            LinkId = Guid.NewGuid(),
             CreatedById = createdBy.UserId,
-            LinkTitle = model.LinkName,
-            Message = model.MessageForUser,
-            NotifyOnUpload = model.NotifyOnUpload,
-            UploadSlots = model.SendTo.Select(sendto => new RequestLinkUploadSlot
+            LinkTitle = createModel.LinkName,
+            Message = createModel.MessageForUser,
+            NotifyOnUpload = createModel.NotifyOnUpload,
+            UploadSlots = createModel.SendTo.Select(sendto => new RequestLinkUploadSlot
             {
-                Closed = false,
+                RequestLinkUploadSlotId = Guid.NewGuid(),
                 Email = sendto,
             }).ToList()
         };
@@ -35,7 +36,7 @@ public class RequestLinksService(
         await dbContext.RequestLinks.AddAsync(link);
         await dbContext.SaveChangesAsync();
 
-        await emailSenderService.NotifyOfRequest(model, link, createdBy.UserName);
+        await emailSenderService.NotifyOfRequest(createModel, link, createdBy.UserName);
 
         return link;
     }

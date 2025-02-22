@@ -2,7 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Dipl.Business.Entities;
 
-public class UploadLink : BaseLink;
+public class UploadLink : BaseLink
+{
+    public DateTime? Uploaded { get; set; }
+}
 
 public abstract class BaseLink
 {
@@ -15,9 +18,8 @@ public abstract class BaseLink
     [MaxLength(10_000)]
     public string? Message { get; set; }
 
-    public required string CreatedById { get; set; }
+    public string CreatedById { get; set; }
     public virtual User CreatedBy { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime LastAccessed { get; set; } = DateTime.Now;
+    public DateTime Created { get; set; } = DateTime.Now;
 }

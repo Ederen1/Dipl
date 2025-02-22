@@ -1,3 +1,4 @@
+@using Dipl.Business.Entities
 @using Dipl.Business.Services
 @using Dipl.Web.Models
 @using Dipl.Web.Services
@@ -7,82 +8,106 @@
 @inject FileManagerService FileManagerService
 @inject UserAuthenticationService UserAuthenticationService
 @inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
 
-@rendermode InteractiveServer
 
-<Validations @ref="_validations" ValidateOnLoad="false">
-    @if (!_isLoggedIn)
-    {
-        <Validation Validator="ValidationRule.IsEmail">
+@if (_closed && !_canViewAfterClose)
+{
+    <div>Upload link created</div>
+    <Button Margin="Margin.Is2.FromTop" Color="Color.Primary" Clicked="GoBack">Go back</Button>
+}
+else
+{
+    <Validations @ref="_validations" ValidateOnLoad="false">
+        <AuthorizeView>
+            <NotAuthorized>
+                <Validation Validator="ValidationRule.IsEmail">
+                    <Field>
+                        <FieldLabel>Your email</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email..." Disabled="_disableEdit">
+                                <Feedback>
+                                    <ValidationError>Enter valid email address</ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
             <Field>
-                <FieldLabel>Your email</FieldLabel>
+                <FieldLabel>Email to</FieldLabel>
                 <FieldBody>
-                    <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email...">
+                    <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
+                                       @bind-Value="_model.EmailTo" Disabled="_disableEdit"></MultipleEmailEdit>
+                    @if (_emailToValidationStatus == ValidationStatus.Error)
+                    {
+                        <Span TextColor="TextColor.Danger"
+                              TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                    }
+                </FieldBody>
+            </Field>
+        </Validation>
+
+
+        <Validation Validator="ValidationRule.IsNotEmpty">
+            <Field>
+                <FieldLabel>Title</FieldLabel>
+                <FieldBody>
+                    <TextEdit @bind-Text="@_model.LinkTitle" Placeholder="Link title..." Disabled="_disableEdit">
                         <Feedback>
-                            <ValidationError>Enter valid email address</ValidationError>
+                            <ValidationError>Enter link title</ValidationError>
                         </Feedback>
                     </TextEdit>
                 </FieldBody>
             </Field>
         </Validation>
-    }
 
-    <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
         <Field>
-            <FieldLabel>Email to</FieldLabel>
+            <FieldLabel>Message for user</FieldLabel>
             <FieldBody>
-                <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
-                                   @bind-Value="_model.EmailTo"></MultipleEmailEdit>
-                @if (_emailToValidationStatus == ValidationStatus.Error)
-                {
-                    <Span TextColor="TextColor.Danger"
-                          TextSize="TextSize.Small">Enter at least one valid email address</Span>
-                }
+                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..." Disabled="_disableEdit"></MemoEdit>
             </FieldBody>
         </Field>
-    </Validation>
 
-
-    <Validation Validator="ValidationRule.IsNotEmpty">
         <Field>
-            <FieldLabel>Title</FieldLabel>
+            <FieldLabel>Upload files here</FieldLabel>
             <FieldBody>
-                <TextEdit @bind-Text="@_model.LinkTitle" Placeholder="Link title...">
-                    <Feedback>
-                        <ValidationError>Enter link title</ValidationError>
-                    </Feedback>
-                </TextEdit>
+                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" Disabled="_disableEdit"/>
             </FieldBody>
         </Field>
-    </Validation>
 
-    <Field>
-        <FieldLabel>Message for user</FieldLabel>
-        <FieldBody>
-            <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."></MemoEdit>
-        </FieldBody>
-    </Field>
+        @if (_canReopen && _closed)
+        {
+            <Button Width="Width.Is100" Color="Color.Success" Clicked="() => _closed = false">Reopen</Button>
+        }
+        else if(!_closed)
+        {
+            <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+        }
 
-    <Field>
-        <FieldLabel>Upload files here</FieldLabel>
-        <FieldBody>
-            <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"/>
-        </FieldBody>
-    </Field>
 
-    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
-</Validations>
+    </Validations>
+}
+
 
 @code {
     private Validations _validations = null!;
     private FileUploadModel _model = new();
-    private bool _isLoggedIn = false;
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
     private CancellationTokenSource _cts = new();
+    private bool _canViewAfterClose;
+    private bool _canReopen;
+    private UploadLink? _currentUploadLink;
+    private bool _closed;
+    private bool _disableEdit;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnParametersSet()
     {
-        _isLoggedIn = await UserAuthenticationService.IsLoggedIn();
+        _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
+        _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
     }
 
     public async ValueTask DisposeAsync()
@@ -96,19 +121,20 @@
         if (!await _validations.ValidateAll())
             return;
 
-        var linkId = await FileManagerService.UploadAllToFolder(_model);
-        if (await UserAuthenticationService.IsLoggedIn())
-        {
-            // TODO: Actually implement
-            NavigationManager.NavigateTo("uploads");
-        }
-        else
-            NavigationManager.NavigateTo($"{NavigationManager.BaseUri}link/{linkId}");
+        _disableEdit = true;
+        _currentUploadLink = await FileManagerService.UploadAllToFolder(_model, _currentUploadLink);
+        _closed = true;
     }
 
     private void ValidateEmails(ValidatorEventArgs e)
     {
         e.Status = !_model.EmailTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
+    }
+
+    private void GoBack()
+    {
+        _closed = false;
+        _model = new FileUploadModel();
     }
 
 }

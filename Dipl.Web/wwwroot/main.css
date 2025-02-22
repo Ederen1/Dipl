@@ -2,3 +2,7 @@
     height: 300px;
     font-size: 2rem;
 }
+
+:focus-visible {
+    outline: none;
+}

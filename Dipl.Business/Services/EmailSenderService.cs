@@ -20,11 +20,11 @@ public class EmailSenderService(
 {
     private MailAddress Sender => new(settings.Value.SenderEmail);
 
-    public async Task NotifyOfRequest(RequestLinkModel model, RequestLink link, string senderName)
+    public async Task NotifyOfRequest(RequestLinkCreateModel createModel, RequestLink link, string senderName)
     {
         var models = link.UploadSlots.Select(slot => new NotifyUserRequestedModel
         {
-            Model = model,
+            CreateModel = createModel,
             RequestLinkId = link.LinkId,
             CurrentlySendingTo = slot.Email,
             SenderName = senderName,
@@ -37,7 +37,7 @@ public class EmailSenderService(
         var emails = renderedTemplates.Select((template, i) => new MailMessage
         {
             From = Sender,
-            To = { model.SendTo[i] },
+            To = { createModel.SendTo[i] },
             Subject = $"{currentUser.UserName} is requesting files from you",
             Body = template,
             IsBodyHtml = true
@@ -51,7 +51,7 @@ public class EmailSenderService(
             }
             catch
             {
-                logger.LogError("Unable to send email to {receiver}", string.Join(',', model.SendTo));
+                logger.LogError("Unable to send email to {receiver}", string.Join(',', createModel.SendTo));
             }
         }
     }

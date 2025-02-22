@@ -1,49 +1,66 @@
 ﻿@page "/"
-@using Dipl.Business.Services
-@inject UserAuthenticationService UserAuthenticationService
 
-@attribute [AllowAnonymous]
-
-@rendermode InteractiveServer
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
 
 <PageTitle>Home</PageTitle>
 
 <Container>
-    <Card>
-        <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
-            <CardTitle Style="font-size: 0;">
-                <Button Size="Size.Large" Border="Border.RoundedZero" Color="IsRequest ? Color.Light : Color.Primary"
-                        Clicked="() => IsRequest = false">Send files
-                </Button>
-                @if (IsLoggedIn)
-                {
+    @if (AnonymousOrCanView)
+    {
+        <Card>
+            <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
+                <CardTitle Style="font-size: 0;">
                     <Button Size="Size.Large" Border="Border.RoundedZero"
-                            Color="IsRequest ? Color.Primary : Color.Light"
-                            Clicked="() => IsRequest = true">Request files
+                            Color="IsRequest ? Color.Light : Color.Primary"
+                            Clicked="() => IsRequest = false">Send files
                     </Button>
+                    <AuthorizeView>
+                        <Authorized>
+                            <Button Size="Size.Large" Border="Border.RoundedZero"
+                                    Color="IsRequest ? Color.Primary : Color.Light"
+                                    Clicked="() => IsRequest = true">Request files
+                            </Button>
+                        </Authorized>
+                    </AuthorizeView>
+                </CardTitle>
+            </CardHeader>
+            <CardBody>
+                @if (IsRequest)
+                {
+                    <FileRequest></FileRequest>
                 }
-            </CardTitle>
-        </CardHeader>
-        <CardBody>
-            @if (IsRequest)
-            {
-                <FileRequest></FileRequest>
-            }
-            else
-            {
-                <FileUpload></FileUpload>
-            }
-        </CardBody>
-    </Card>
+                else
+                {
+                    <FileUpload></FileUpload>
+                }
+            </CardBody>
+
+        </Card>
+    }
+    else
+    {
+        <Heading Size="HeadingSize.Is4" Margin="Margin.Is3">This site is not configured to be used by anonymous users.
+            Please log in
+        </Heading>
+    }
 </Container>
 
 @code {
     bool IsRequest { get; set; }
-    bool IsLoggedIn { get; set; }
+    bool AnonymousOrCanView { get; set; }
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        IsLoggedIn = await UserAuthenticationService.IsLoggedIn();
+        var allowAnonymous = Configuration.GetValue<bool>("AllowAnonymous");
+        if (allowAnonymous)
+        {
+            AnonymousOrCanView = true;
+            return;
+        }
+
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        AnonymousOrCanView = state.User.Identity?.IsAuthenticated == true;
     }
 
 }

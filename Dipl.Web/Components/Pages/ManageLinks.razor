@@ -2,11 +2,16 @@
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
+@using Dipl.Common.Util
 @using Microsoft.EntityFrameworkCore
-@rendermode InteractiveServer
+
+@attribute [Authorize]
 
 @inject UsersService UsersService
 @inject AppDbContext DbContext
+@inject IStoreService StoreService
 
 <Container>
     <h3>Request links</h3>
@@ -15,8 +20,9 @@
             <TableRow>
                 <TableHeaderCell>Title</TableHeaderCell>
                 <TableHeaderCell>Message</TableHeaderCell>
+                <TableHeaderCell>Created</TableHeaderCell>
                 <TableHeaderCell>Notify On Upload</TableHeaderCell>
-                <TableHeaderCell Width="Width.Auto">Actions</TableHeaderCell>
+                <TableHeaderCell Width="Width.Px(200)">Actions</TableHeaderCell>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -27,8 +33,9 @@
                         @requestLink.LinkTitle
                     </TableRowCell>
                     <TableRowCell>@requestLink.Message</TableRowCell>
+                    <TableRowCell>@requestLink.Created</TableRowCell>
                     <TableRowCell>@(requestLink.NotifyOnUpload ? "Yes" : "No")</TableRowCell>
-                    <TableRowCell Style="width: 0">
+                    <TableRowCell>
                         <ConfirmButton Color="Color.Danger" Size="Size.Small"
                                        OnConfirm="@(() => RemoveRequestLink(requestLink))">
                             Remove
@@ -44,17 +51,41 @@
                                 <TableHeader>
                                     <TableRow>
                                         <TableHeaderCell>Email</TableHeaderCell>
-                                        <TableHeaderCell>Closed</TableHeaderCell>
-                                        <TableHeaderCell>Actions</TableHeaderCell>
+                                        <TableHeaderCell>Size</TableHeaderCell>
+                                        <TableHeaderCell>Extensions</TableHeaderCell>
+                                        <TableHeaderCell>Last uploaded</TableHeaderCell>
+                                        <TableHeaderCell Width="Width.Px(360)">Actions</TableHeaderCell>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     @foreach (var slot in requestLink.UploadSlots)
                                     {
                                         <TableRow>
-                                            <TableRowCell>@slot.Email</TableRowCell>
-                                            <TableRowCell>@(slot.Closed ? "Yes" : "No")</TableRowCell>
-                                            <TableRowCell Style="width: 0">
+                                            <TableRowCell>
+                                                @slot.Email
+                                            </TableRowCell>
+                                            <TableRowCell>
+                                                <Tooltip
+                                                    Style="text-decoration: dotted underline; text-underline-offset: 2px"
+                                                    Display="Display.Inline" Placement="TooltipPlacement.Bottom"
+                                                    Text="@GetSlotFileNames(slot.RequestLinkUploadSlotId)">
+                                                    @GetSize(slot.RequestLinkUploadSlotId)
+                                                </Tooltip>
+                                            </TableRowCell>
+                                            <TableRowCell>
+                                                @GetFileExtensions(slot.RequestLinkUploadSlotId)
+                                            </TableRowCell>
+                                            <TableRowCell>@slot.Uploaded</TableRowCell>
+                                            <TableRowCell Display="Display.Flex" Gap="Gap.Is2">
+                                                <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
+                                                        To="@("/link/" + requestLink.LinkId + "/" + slot.RequestLinkUploadSlotId)">
+                                                    Show files
+                                                </Button>
+                                                <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
+                                                        To="@($"/download/fromRequest/{requestLink.LinkId}/{slot.RequestLinkUploadSlotId}")"
+                                                        Download="@(FileUtils.SanitizePath(slot.Email) + ".zip")">
+                                                    Download .zip
+                                                </Button>
                                                 <ConfirmButton Color="Color.Danger" Size="Size.Small"
                                                                OnConfirm="@(() => RemoveUploadSlot(requestLink, slot))">
                                                     Remove Slot
@@ -80,7 +111,11 @@
             <TableRow>
                 <TableHeaderCell>Title</TableHeaderCell>
                 <TableHeaderCell>Message</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
+                <TableHeaderCell>Size</TableHeaderCell>
+                <TableHeaderCell>Extensions</TableHeaderCell>
+                <TableHeaderCell>Created</TableHeaderCell>
+                <TableHeaderCell>Last Uploaded</TableHeaderCell>
+                <TableHeaderCell Width="Width.Px(360)">Actions</TableHeaderCell>
             </TableRow>
         </TableHeader>
         <TableBody>
@@ -92,6 +127,27 @@
                     </TableRowCell>
                     <TableRowCell>@uploadLink.Message</TableRowCell>
                     <TableRowCell>
+                        <Tooltip Style="text-decoration: dotted underline; text-underline-offset: 2px"
+                                 Display="Display.Inline" Placement="TooltipPlacement.Bottom"
+                                 Text="@GetSlotFileNames(uploadLink.LinkId)">
+                            @GetSize(uploadLink.LinkId)
+                        </Tooltip>
+                    </TableRowCell>
+                    <TableRowCell>
+                        @GetFileExtensions(uploadLink.LinkId)
+                    </TableRowCell>
+                    <TableRowCell>@uploadLink.Created</TableRowCell>
+                    <TableRowCell>@uploadLink.Uploaded</TableRowCell>
+                    <TableRowCell Display="Display.Flex" Gap="Gap.Is2">
+                        <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
+                                To="@("/link/" + uploadLink.LinkId)">
+                            Show files
+                        </Button>
+                        <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
+                                To="@($"/download/fromUpload/{uploadLink.LinkId}")"
+                                Download="@(FileUtils.SanitizePath(uploadLink.LinkTitle) + ".zip")">
+                            Download .zip
+                        </Button>
                         <Button Color="Color.Danger" Size="Size.Small"
                                 Clicked="@(() => RemoveUploadLink(uploadLink))">
                             Remove
@@ -106,6 +162,7 @@
 @code {
     private List<RequestLink> _requestLinks = [];
     private List<UploadLink> _uploadLinks = [];
+    private readonly Dictionary<Guid, FileInfo[]> _fileInfos = [];
     private User _currentUser = null!;
 
     protected override async Task OnInitializedAsync()
@@ -116,8 +173,29 @@
 
     private async Task ReloadData()
     {
-        _requestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+        _requestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).ToListAsync();
         _uploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+        _fileInfos.Clear();
+
+        foreach (var requestLink in _requestLinks)
+        {
+            foreach (var uploadSlot in requestLink.UploadSlots)
+            {
+                if (uploadSlot.Uploaded is null)
+                    continue;
+
+                var infos = await StoreService.ListFolder($"{requestLink.LinkId}/{uploadSlot.RequestLinkUploadSlotId}");
+                if (infos is not null)
+                    _fileInfos.Add(uploadSlot.RequestLinkUploadSlotId, infos);
+            }
+        }
+
+        foreach (var uploadLink in _uploadLinks)
+        {
+            var infos = await StoreService.ListFolder($"{uploadLink.LinkId}");
+            if (infos is not null)
+                _fileInfos.Add(uploadLink.LinkId, infos);
+        }
     }
 
     private async Task RemoveRequestLink(RequestLink link)
@@ -139,6 +217,34 @@
         parentLink.UploadSlots.Remove(slot);
         await DbContext.SaveChangesAsync();
         await ReloadData();
+    }
+
+    private string GetSlotFileNames(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        return string.Join("<br>", files.Select(x => x.Name));
+    }
+
+    private string GetSize(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        var fullSize = files.Sum(x => x.Size);
+        return FileUtils.BytesToString(fullSize);
+    }
+
+    private string GetFileExtensions(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        var extensions = files.Select(x => '.' + x.Name.Split('.').Last()).GroupBy(x => x).Select(x => $"{x.Key} ({x.Count()})");
+        var result = string.Join(", ", extensions);
+
+        return result;
     }
 
 }

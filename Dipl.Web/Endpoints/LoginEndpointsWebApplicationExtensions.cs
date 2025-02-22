@@ -17,7 +17,7 @@ public static class LoginEndpointsWebApplicationExtensions
                 RedirectUri = "/Account/LoginCallback?ReturnUrl=" + returnUrl
             };
 
-            return Results.Challenge(props, new[] { MicrosoftAccountDefaults.AuthenticationScheme });
+            return Results.Challenge(props, [MicrosoftAccountDefaults.AuthenticationScheme]);
         });
 
         app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService userService, string returnUrl) =>
@@ -32,10 +32,6 @@ public static class LoginEndpointsWebApplicationExtensions
             return Results.Redirect(returnUrl);
         });
 
-        app.MapGet("/Account/Logout", async (HttpContext httpContext) =>
-        {
-            await httpContext.SignOutAsync();
-            return Results.Redirect("/");
-        });
+        app.MapGet("/Account/Logout", () => Results.SignOut(new AuthenticationProperties {RedirectUri = "/"}));
     }
 }

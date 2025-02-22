@@ -1,12 +1,14 @@
 @using Dipl.Common.Util
-@rendermode InteractiveServer
+
 
 <div
-    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))">
+    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))" 
+    style="@(Disabled ? "background-color: #e9ecef" : "")"
+    >
     @foreach (var email in Value)
     {
         <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small"
-               CloseClicked="() => RemoveEmail(email)">
+               CloseClicked="Disabled ? null : () => RemoveEmail(email)">
             <span class="pe-1">@email</span>
         </Badge>
     }
@@ -16,7 +18,8 @@
         Width="Width.Auto"
         Role="TextRole.Email"
         FocusOut="FocusLost"
-        KeyDown="KeyDown">
+        KeyDown="KeyDown"
+        Disabled="Disabled">
     </TextEdit>
 </div>
 
@@ -30,6 +33,9 @@
 
     [Parameter]
     public ValidationStatus ValidationStatus { get; set; }
+    
+    [Parameter]
+    public bool Disabled { get; set; }
 
     private string _currentEmail = "";
     private string _editStyle = ValidStyle;

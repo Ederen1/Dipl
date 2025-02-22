@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Blazorise;
 using Blazorise.Bootstrap5;
 using Blazorise.Icons.FontAwesome;
@@ -7,6 +8,7 @@ using Dipl.Common.Configs;
 using Dipl.Web.Components;
 using Dipl.Web.Endpoints;
 using Dipl.Web.Extensions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,12 +29,36 @@ builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name
         opt.SignInScheme = "Cookies";
         opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
         opt.ClientSecret = configuration["Authentication:Microsoft:ClientSecret"]!;
+
+        opt.Events.OnTicketReceived = context =>
+        {
+            var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value ??
+                        context.Principal?.FindFirst("email")?.Value;
+
+            if (string.IsNullOrEmpty(email))
+                return Task.CompletedTask;
+
+            var allowedDomains = configuration.GetSection("AllowedDomains").Get<string[]>();
+            if (allowedDomains?.Any(x => email.EndsWith(x)) == true)
+                return Task.CompletedTask;
+
+            var allowedEmails = configuration.GetSection("AllowedEmails").Get<string[]>();
+            if (allowedEmails?.Contains(email) == true)
+                return Task.CompletedTask;
+            
+            context.Response.Redirect("/failSignin");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        };
     });
+
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthorization();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies();
-    options.UseSqlite(configuration["ConnectionStrings:DiplDb"]!);
+    options.UseSqlite(configuration["ConnectionStrings:Db"]!);
     options.EnableSensitiveDataLogging();
     options.EnableDetailedErrors();
 });
@@ -55,7 +81,7 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseDomainWhitelist();
+// app.UseDomainWhitelist();
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

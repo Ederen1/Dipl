@@ -101,13 +101,13 @@
 <div class="container-wrapper">
     <div class="container">
         <div class="request-info">
-            <span class="link-name">@Model.Model.LinkName</span>
+            <span class="link-name">@Model.CreateModel.LinkName</span>
             <div class="request-text">@Model.SenderName is requesting files from you</div>
         </div>
 
-        @if (!string.IsNullOrEmpty(Model.Model.MessageForUser))
+        @if (!string.IsNullOrEmpty(Model.CreateModel.MessageForUser))
         {
-            <div class="message">@Model.Model.MessageForUser</div>
+            <div class="message">@Model.CreateModel.MessageForUser</div>
             <div class="divider"></div>
         }
 
@@ -120,7 +120,7 @@
             </a>
         </div>
 
-        @if (Model.Model.NotifyOnUpload)
+        @if (Model.CreateModel.NotifyOnUpload)
         {
             <div class="notify-info">
                 @Model.SenderName will be notified when you upload files

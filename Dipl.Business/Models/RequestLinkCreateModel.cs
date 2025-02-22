@@ -1,6 +1,6 @@
 namespace Dipl.Business.Models;
 
-public class RequestLinkModel
+public class RequestLinkCreateModel
 {
     public string LinkName { get; set; } = null!;
     public string MessageForUser { get; set; } = "";
