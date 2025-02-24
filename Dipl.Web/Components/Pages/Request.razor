@@ -3,7 +3,6 @@
 @using Dipl.Business.Entities
 @using Dipl.Business.Services.Interfaces
 @using Dipl.Common.Types
-@using Dipl.Web.Models
 @using Dipl.Web.Services
 
 @inject FileManagerService FileManagerService
@@ -21,7 +20,7 @@
     }
     else
     {
-        <Validations @ref="_validations" ValidateOnLoad="false" >
+        <Validations @ref="_validations" ValidateOnLoad="false">
             <Field>
                 <FieldLabel>Message for user</FieldLabel>
                 <FieldBody>
@@ -33,7 +32,9 @@
             <Field>
                 <FieldLabel>Upload files here</FieldLabel>
                 <FieldBody>
-                    <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload" @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
+                    <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload"
+                                                    @bind-DeleteOnlyValue="_alreadyPresentFiles"
+                                                    Disabled="_disableEdit"/>
                 </FieldBody>
             </Field>
 
@@ -43,7 +44,7 @@
                         Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
                 </Button>
             }
-            else if(!_closed)
+            else if (!_closed)
             {
                 <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
                 </Button>
@@ -79,7 +80,7 @@
         _closed = Slot.Uploaded != null;
         if (_closed)
             _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
-        
+
         _disableEdit = _closed;
     }
 

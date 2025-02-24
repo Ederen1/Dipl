@@ -8,7 +8,6 @@ using Dipl.Common.Configs;
 using Dipl.Web.Components;
 using Dipl.Web.Endpoints;
 using Dipl.Web.Extensions;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,7 +44,7 @@ builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name
             var allowedEmails = configuration.GetSection("AllowedEmails").Get<string[]>();
             if (allowedEmails?.Contains(email) == true)
                 return Task.CompletedTask;
-            
+
             context.Response.Redirect("/failSignin");
             context.HandleResponse();
             return Task.CompletedTask;

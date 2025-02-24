@@ -23,8 +23,8 @@ public static class DownloadEndpointsWebApplicationExtensions
                     context.Response.StatusCode = 404;
                     return;
                 }
-                
-                
+
+
                 var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
 
                 // Set the Content-Disposition header for the file name
@@ -70,8 +70,8 @@ public static class DownloadEndpointsWebApplicationExtensions
             return Results.File(file, "application/octed-stream");
         });
 
-        app.MapGet("/download/fromRequest/{linkId:guid}/{slotId:guid}", async (Guid slotId, Guid linkId, AppDbContext dbContext,
-            IStoreService storeService, HttpContext context) =>
+        app.MapGet("/download/fromRequest/{linkId:guid}/{slotId:guid}", async (Guid slotId, Guid linkId,
+            AppDbContext dbContext, IStoreService storeService, HttpContext context) =>
         {
             var link = await dbContext.RequestLinks.Include(requestLink => requestLink.UploadSlots)
                 .FirstOrDefaultAsync(x => x.LinkId == linkId);
@@ -97,7 +97,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 context.Response.StatusCode = 404;
                 return;
             }
-            
+
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
 
             // Set the Content-Disposition header for the file name

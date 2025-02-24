@@ -84,7 +84,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
 
         foreach (var directory in Directory.GetDirectories(fullPath))
             Directory.Delete(directory, true);
-        
+
         return Task.CompletedTask;
     }
 

@@ -32,6 +32,6 @@ public static class LoginEndpointsWebApplicationExtensions
             return Results.Redirect(returnUrl);
         });
 
-        app.MapGet("/Account/Logout", () => Results.SignOut(new AuthenticationProperties {RedirectUri = "/"}));
+        app.MapGet("/Account/Logout", () => Results.SignOut(new AuthenticationProperties { RedirectUri = "/" }));
     }
 }

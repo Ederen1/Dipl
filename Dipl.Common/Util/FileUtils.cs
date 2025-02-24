@@ -15,7 +15,7 @@ public static class FileUtils
         var num = Math.Round(bytes / Math.Pow(1024, place), 1);
         return (Math.Sign(byteCount) * num).ToString(CultureInfo.InvariantCulture) + suf[place];
     }
-    
+
     public static string SanitizePath(string path)
     {
         var notAllowed = Path.GetInvalidPathChars().Concat(Path.GetInvalidFileNameChars());

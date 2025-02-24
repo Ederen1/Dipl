@@ -24,15 +24,15 @@ public class RequestLinksService(
             UploadSlots = createModel.SendTo.Select(sendto => new RequestLinkUploadSlot
             {
                 RequestLinkUploadSlotId = Guid.NewGuid(),
-                Email = sendto,
+                Email = sendto
             }).ToList()
         };
 
         await storeService.CreateDirectoryIfNotExists(link.LinkId.ToString());
-        
+
         foreach (var userDirectory in link.UploadSlots)
             await storeService.CreateDirectoryIfNotExists(link.LinkId + "/" + userDirectory.RequestLinkUploadSlotId);
-        
+
         await dbContext.RequestLinks.AddAsync(link);
         await dbContext.SaveChangesAsync();
 

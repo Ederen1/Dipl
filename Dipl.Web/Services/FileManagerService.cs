@@ -6,7 +6,6 @@ using Dipl.Business.Models;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Web.Models;
-using Microsoft.EntityFrameworkCore;
 using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Web.Services;
@@ -20,8 +19,8 @@ public class FileManagerService(
 {
     private const int UploadChunkSize = 4;
 
-    public async Task<(UploadLink, List<FileInfo>)> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink, List<FileInfo> alreadyPresentFiles,
-        CancellationToken cancellationToken = default)
+    public async Task<(UploadLink, List<FileInfo>)> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink,
+        List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
     {
         var createdBy = await usersService.GetCurrentUser();
         var mappedModel = model.MapToCreateUploadModel(createdBy.UserName);
@@ -43,12 +42,12 @@ public class FileManagerService(
         var folderContents = await storeService.ListFolder($"{link.LinkId}");
         if (folderContents is null)
             throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
-        
+
         return (link, folderContents.ToList());
     }
 
-    public async Task<List<FileInfo>> RespondToFileRequest(RequestLinkUploadSlot slot, List<IFileEntry> filesToUpload, List<FileInfo> alreadyPresentFiles,
-        CancellationToken cancellationToken = default)
+    public async Task<List<FileInfo>> RespondToFileRequest(RequestLinkUploadSlot slot, List<IFileEntry> filesToUpload,
+        List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
     {
         var link = slot.RequestLink;
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
@@ -71,7 +70,7 @@ public class FileManagerService(
                     Size = x.Size
                 }).ToArray()
             };
-            
+
             await requestLinksService.NotifyFileRequestUpload(notifyModel, cancellationToken);
         }
 
@@ -79,19 +78,18 @@ public class FileManagerService(
         var folderContents = await storeService.ListFolder($"{link.LinkId}/{slot.RequestLinkUploadSlotId}");
         if (folderContents is null)
             throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
-        
+
         return folderContents.ToList();
     }
 
-    private async Task UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles, string folder, CancellationToken cancellationToken)
+    private async Task UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles, string folder,
+        CancellationToken cancellationToken)
     {
         var existingFiles = await storeService.ListFolder(folder);
         var (keepUpload, toDelete) = DiffFiles(files, alreadyPresentFiles, existingFiles);
 
         foreach (var file in toDelete)
-        {
             await storeService.DeleteFile(file.Name, folder);
-        }
 
         foreach (var chunkedFiles in keepUpload.Chunk(UploadChunkSize))
         {
@@ -109,7 +107,7 @@ public class FileManagerService(
         {
             if (alreadyPresentFiles.Count != 0)
                 throw new Exception("Logic error");
-            
+
             return (files, []);
         }
 

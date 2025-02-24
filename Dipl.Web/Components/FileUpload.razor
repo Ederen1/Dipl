@@ -78,13 +78,16 @@ else
         <Field>
             <FieldLabel>Upload files here</FieldLabel>
             <FieldBody>
-                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
+                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"
+                                                @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
             </FieldBody>
         </Field>
 
         @if (_canReopen && _closed)
         {
-            <Button Width="Width.Is100" Color="Color.Success" Clicked="() => { _closed = false; _disableEdit = false; }">Reopen</Button>
+            <Button Width="Width.Is100" Color="Color.Success"
+                    Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
+            </Button>
         }
         else if (!_closed)
         {

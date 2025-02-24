@@ -30,7 +30,7 @@ public class EmailSenderService(
             SenderName = senderName,
             SlotId = slot.RequestLinkUploadSlotId
         });
-        
+
         var renderedTemplates = await Task.WhenAll(models.Select(RenderTemplate<NotifyUserRequested>));
         var currentUser = await usersService.GetCurrentUser();
 
@@ -44,7 +44,6 @@ public class EmailSenderService(
         });
 
         foreach (var email in emails)
-        {
             try
             {
                 await smtpClient.SendMailAsync(email);
@@ -53,7 +52,6 @@ public class EmailSenderService(
             {
                 logger.LogError("Unable to send email to {receiver}", string.Join(',', createModel.SendTo));
             }
-        }
     }
 
     public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model,

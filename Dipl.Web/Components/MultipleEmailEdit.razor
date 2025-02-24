@@ -1,10 +1,8 @@
 @using Dipl.Common.Util
-
-
 <div
-    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))" 
+    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))"
     style="@(Disabled ? "background-color: #e9ecef" : "")"
-    >
+>
     @foreach (var email in Value)
     {
         <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small"
@@ -33,7 +31,7 @@
 
     [Parameter]
     public ValidationStatus ValidationStatus { get; set; }
-    
+
     [Parameter]
     public bool Disabled { get; set; }
 
