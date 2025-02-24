@@ -11,7 +11,7 @@ public class RequestLinksService(
     EmailSenderService emailSenderService,
     UsersService usersService)
 {
-    public async Task<RequestLink> CreateLink(RequestLinkCreateModel createModel)
+    public async Task CreateLink(RequestLinkCreateModel createModel)
     {
         var createdBy = await usersService.GetCurrentUser();
         var link = new RequestLink
@@ -37,8 +37,6 @@ public class RequestLinksService(
         await dbContext.SaveChangesAsync();
 
         await emailSenderService.NotifyOfRequest(createModel, link, createdBy.UserName);
-
-        return link;
     }
 
     public async Task NotifyFileRequestUpload(NotifyRequestUploadedModel model,

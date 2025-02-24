@@ -1,12 +1,15 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
 @using Dipl.Business
 @using Dipl.Business.Entities
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
 @using Dipl.Web.Models
 @using Dipl.Web.Services
 
 @inject FileManagerService FileManagerService
 @inject AppDbContext DbContext
 @inject IConfiguration Configuration
+@inject IStoreService StoreService
 
 
 <Container>
@@ -18,11 +21,11 @@
     }
     else
     {
-        <Validations @ref="_validations" ValidateOnLoad="false">
+        <Validations @ref="_validations" ValidateOnLoad="false" >
             <Field>
                 <FieldLabel>Message for user</FieldLabel>
                 <FieldBody>
-                    <MemoEdit Rows="5" @bind-Text="@_model.Message" Placeholder="Message for user..."
+                    <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
                               Disabled="_disableEdit"></MemoEdit>
                 </FieldBody>
             </Field>
@@ -30,7 +33,7 @@
             <Field>
                 <FieldLabel>Upload files here</FieldLabel>
                 <FieldBody>
-                    <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" Disabled="_disableEdit"/>
+                    <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload" @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
                 </FieldBody>
             </Field>
 
@@ -59,20 +62,24 @@
     public Guid SlotId { get; set; }
 
     private Validations _validations = null!;
-    private readonly RequestLinkResponseModel _model = new();
     private bool _closed;
     private bool _canReopen;
     private bool _canViewAfterClose;
     private bool _disableEdit;
+    private List<IFileEntry> _filesToUpload = [];
+    private List<FileInfo> _alreadyPresentFiles = [];
 
-    private RequestLinkUploadSlot? Slot { get; set; }
+    private RequestLinkUploadSlot Slot { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync()
     {
         _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
         _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
-        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId);
-        _closed = Slot?.Uploaded != null;
+        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId) ?? throw new Exception("Unable to find slot");
+        _closed = Slot.Uploaded != null;
+        if (_closed)
+            _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
+        
         _disableEdit = _closed;
     }
 
@@ -81,11 +88,12 @@
         if (!await _validations.ValidateAll())
             return;
 
-        if (Slot is null)
+        if (_alreadyPresentFiles.Count == 0 && _filesToUpload.Count == 0)
             return;
 
         _disableEdit = true;
-        await FileManagerService.RespondToFileRequest(_model, Slot);
+        _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles);
+        _filesToUpload.Clear();
         _closed = true;
     }
 

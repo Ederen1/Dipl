@@ -8,6 +8,9 @@ public class RequestLinkUploadSlot
 
     [MaxLength(100)]
     public required string Email { get; set; }
+    
+    [MaxLength(10_000)]
+    public string? Message { get; set; } 
 
     public DateTime? Uploaded { get; set; }
 

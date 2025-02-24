@@ -1,6 +1,8 @@
 ﻿using Blazorise;
 using Dipl.Business;
+using Dipl.Business.EmailModels;
 using Dipl.Business.Entities;
+using Dipl.Business.Models;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Web.Models;
@@ -18,7 +20,7 @@ public class FileManagerService(
 {
     private const int UploadChunkSize = 4;
 
-    public async Task<UploadLink> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink,
+    public async Task<(UploadLink, List<FileInfo>)> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink, List<FileInfo> alreadyPresentFiles,
         CancellationToken cancellationToken = default)
     {
         var createdBy = await usersService.GetCurrentUser();
@@ -35,40 +37,62 @@ public class FileManagerService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await UploadFiles(model.FilesToUpload, link.LinkId.ToString(), cancellationToken);
+        await UploadFiles(model.FilesToUpload, alreadyPresentFiles, link.LinkId.ToString(), cancellationToken);
         await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
 
-        return link;
+        var folderContents = await storeService.ListFolder($"{link.LinkId}");
+        if (folderContents is null)
+            throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
+        
+        return (link, folderContents.ToList());
     }
 
-    public async Task RespondToFileRequest(RequestLinkResponseModel model, RequestLinkUploadSlot slot,
+    public async Task<List<FileInfo>> RespondToFileRequest(RequestLinkUploadSlot slot, List<IFileEntry> filesToUpload, List<FileInfo> alreadyPresentFiles,
         CancellationToken cancellationToken = default)
     {
         var link = slot.RequestLink;
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
-        await UploadFiles(model.FilesToUpload, dir, cancellationToken);
+        await UploadFiles(filesToUpload, alreadyPresentFiles, dir, cancellationToken);
         slot.Uploaded = DateTime.Now;
 
         if (link.NotifyOnUpload)
         {
-            var notifyModel = model.MapToNotifyRequestUploadedModel(link, slot);
+            var notifyModel = new NotifyRequestUploadedModel
+            {
+                Message = slot.Message ?? "",
+                LinkTitle = link.LinkTitle!,
+                Link = link,
+                UploadSlot = slot,
+                EmailTo = link.CreatedBy.Email,
+                Files = filesToUpload.Select(x => new FileInfoModel
+                {
+                    Name = x.Name,
+                    Size = x.Size
+                }).ToArray()
+            };
+            
             await requestLinksService.NotifyFileRequestUpload(notifyModel, cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        var folderContents = await storeService.ListFolder($"{link.LinkId}/{slot.RequestLinkUploadSlotId}");
+        if (folderContents is null)
+            throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
+        
+        return folderContents.ToList();
     }
 
-    private async Task UploadFiles(IEnumerable<IFileEntry> files, string folder, CancellationToken cancellationToken)
+    private async Task UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles, string folder, CancellationToken cancellationToken)
     {
         var existingFiles = await storeService.ListFolder(folder);
-        var (keepUpload, toDelete) = DiffFiles(files, existingFiles);
+        var (keepUpload, toDelete) = DiffFiles(files, alreadyPresentFiles, existingFiles);
 
-        foreach (var file  in toDelete)
+        foreach (var file in toDelete)
         {
             await storeService.DeleteFile(file.Name, folder);
         }
-        
+
         foreach (var chunkedFiles in keepUpload.Chunk(UploadChunkSize))
         {
             var tasks = chunkedFiles.Select(file => storeService.InsertFile(file.Name, folder,
@@ -78,17 +102,18 @@ public class FileManagerService(
         }
     }
 
-    private (IEnumerable<IFileEntry> keepUpload, IEnumerable<FileInfo> toDelete) DiffFiles(IEnumerable<IFileEntry> files,
-        FileInfo[]? existingFiles)
+    private (IEnumerable<IFileEntry> keepUpload, IEnumerable<FileInfo> toDelete) DiffFiles(List<IFileEntry> files,
+        List<FileInfo> alreadyPresentFiles, FileInfo[]? existingFiles)
     {
         if (existingFiles is null)
+        {
+            if (alreadyPresentFiles.Count != 0)
+                throw new Exception("Logic error");
+            
             return (files, []);
+        }
 
-        var keepUpload = files.Where(f => f.Status == FileEntryStatus.Ready).ToList();
-        var toRemoveUpdatePart = existingFiles.Where(file => keepUpload.Any(up => up.Name == file.Name));
-        // var toRemove = toRemoveUpdatePart.Concat();
-        var toRemove = existingFiles.Where(f => !files.Any(file => file.Name == f.Name));
-        
-        return (keepUpload, toRemove);
+        var toRemove = existingFiles.Where(f => alreadyPresentFiles.All(apf => apf.Name != f.Name));
+        return (files, toRemove);
     }
 }

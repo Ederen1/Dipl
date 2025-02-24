@@ -1,5 +1,6 @@
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
+@using Dipl.Common.Types
 @using Dipl.Web.Models
 @using Dipl.Web.Services
 @implements IAsyncDisposable
@@ -25,7 +26,8 @@ else
                     <Field>
                         <FieldLabel>Your email</FieldLabel>
                         <FieldBody>
-                            <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email..." Disabled="_disableEdit">
+                            <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email..."
+                                      Disabled="_disableEdit">
                                 <Feedback>
                                     <ValidationError>Enter valid email address</ValidationError>
                                 </Feedback>
@@ -68,22 +70,23 @@ else
         <Field>
             <FieldLabel>Message for user</FieldLabel>
             <FieldBody>
-                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..." Disabled="_disableEdit"></MemoEdit>
+                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."
+                          Disabled="_disableEdit"></MemoEdit>
             </FieldBody>
         </Field>
 
         <Field>
             <FieldLabel>Upload files here</FieldLabel>
             <FieldBody>
-                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" Disabled="_disableEdit"/>
+                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload" @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
             </FieldBody>
         </Field>
 
         @if (_canReopen && _closed)
         {
-            <Button Width="Width.Is100" Color="Color.Success" Clicked="() => _closed = false">Reopen</Button>
+            <Button Width="Width.Is100" Color="Color.Success" Clicked="() => { _closed = false; _disableEdit = false; }">Reopen</Button>
         }
-        else if(!_closed)
+        else if (!_closed)
         {
             <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
         }
@@ -96,6 +99,7 @@ else
 @code {
     private Validations _validations = null!;
     private FileUploadModel _model = new();
+    private List<FileInfo> _alreadyPresentFiles = [];
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
     private CancellationTokenSource _cts = new();
     private bool _canViewAfterClose;
@@ -121,8 +125,12 @@ else
         if (!await _validations.ValidateAll())
             return;
 
+        if (_model.FilesToUpload.Count == 0 && _alreadyPresentFiles.Count == 0)
+            return;
+
         _disableEdit = true;
-        _currentUploadLink = await FileManagerService.UploadAllToFolder(_model, _currentUploadLink);
+        (_currentUploadLink, _alreadyPresentFiles) = await FileManagerService.UploadAllToFolder(_model, _currentUploadLink, _alreadyPresentFiles);
+        _model.FilesToUpload.Clear();
         _closed = true;
     }
 
