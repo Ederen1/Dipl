@@ -19,6 +19,19 @@
 <body>
 <Routes @rendermode="InteractiveServer"/>
 <script src="_framework/blazor.web.js"></script>
+<script>
+    window.setupPicker = () => {
+        let picker = document.querySelector("#picker input");
+        picker.onclick = (e) => {
+            e.preventDefault();
+        }
+        let pickerContainer = document.querySelector("#picker");
+        pickerContainer.ondragenter = () => pickerContainer.classList.add("dragover");
+        pickerContainer.ondragover = () => pickerContainer.classList.add("dragover");
+        pickerContainer.ondragleave = () => pickerContainer.classList.remove("dragover");
+    }
+
+</script>
 </body>
 
 </html>

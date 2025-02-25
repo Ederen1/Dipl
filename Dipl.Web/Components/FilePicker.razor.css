@@ -6,22 +6,36 @@
     border: 3px dashed #ccc;
     border-radius: 5px;
     padding: 20px 10px 10px;
+    z-index: 10;
     position: relative;
 }
 
-.picker.dragover {
+::deep input {
+    cursor: default !important;
+}
+
+.lowest {
+    z-index: -2;
+}
+
+.picker.disabled {
+    background-color: #e9ecef
+}
+
+.picker.dragover:not(.disabled) {
     background: rgb(230, 241, 255);
 }
 
 ::deep .form-file {
-    display: none;
-}
-
-.edits {
-    display: flex;
     position: absolute;
+    z-index: -1;
+    opacity: 0;
     top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+}
+
+::deep .form-file label {
+    display: none;
 }

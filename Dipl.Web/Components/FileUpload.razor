@@ -10,7 +10,23 @@
 @inject UserAuthenticationService UserAuthenticationService
 @inject NavigationManager NavigationManager
 @inject IConfiguration Configuration
+@inject IJSRuntime JsRuntime
 
+@if (_currentUploadLink != null)
+{
+    <Row>
+        <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
+            Copy link:
+        </Column>
+        <Column>
+            <Div Class="input-group">
+                <TextEdit Disabled="true"
+                          Text="@($"{NavigationManager.BaseUri}link/{_currentUploadLink!.LinkId}")"></TextEdit>
+                <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
+            </Div>
+        </Column>
+    </Row>
+}
 
 @if (_closed && !_canViewAfterClose)
 {
@@ -146,6 +162,11 @@ else
     {
         _closed = false;
         _model = new FileUploadModel();
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", $"{NavigationManager.BaseUri}link/{_currentUploadLink!.LinkId}");
     }
 
 }

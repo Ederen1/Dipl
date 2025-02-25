@@ -1,19 +1,19 @@
 @using Blazorise.Icons.FontAwesome
 @using Dipl.Common.Types
 @using Dipl.Common.Util
-<div Style="@(Disabled ? "background-color: #e9ecef" : "")" class="picker @_hoverClass"
-     @ondragenter="DragEnter"
-     ondragover="event.preventDefault()">
+@inject IJSRuntime JSRuntime
+
+<div id="picker" class="picker @_disabledClass">
     @if (!Disabled)
     {
-        <div class="w-100 d-flex justify-content-center">
+        <div class="w-100 d-flex justify-content-center lowest">
             <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
         </div>
 
-        <div class="w-100 d-flex gap-2 justify-content-center">
-            <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
+        <div class="d-flex gap-2 justify-content-center mx-auto">
+            <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
             </Button>
-            <Button style="z-index: 1" Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add
+            <Button Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add
                 folder
             </Button>
         </div>
@@ -65,9 +65,7 @@
         </Card>
     }
 
-    <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple/>
-    <FileEdit Class="directory-edit" @ref="_directoryEdit" Written="Written" Changed="OnFileChange"
-              Directory></FileEdit>
+    <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple Directory="_pickingDirectory"/>
 </div>
 
 @code {
@@ -88,18 +86,30 @@
     public bool Disabled { get; set; }
 
     private FileEdit _fileEdit = null!;
-    private FileEdit _directoryEdit = null!;
-    private string _hoverClass = "";
+    private string _disabledClass = "";
     private Dictionary<IFileEntry, int> _progress = [];
 
-    private Task AddFile()
+    private bool _pickingDirectory = true;
+
+    private async Task AddFile()
     {
-        return _fileEdit.ShowPicker();
+        _pickingDirectory = false;
+        await InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            await _fileEdit.ShowPicker();
+            _pickingDirectory = true;
+        });
     }
 
-    private Task AddDirectory()
+    private async Task AddDirectory()
     {
-        return _directoryEdit.ShowPicker();
+        await InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            await _fileEdit.ShowPicker();
+            _pickingDirectory = true;
+        });
     }
 
     private async Task RemoveFile(IFileEntry file)
@@ -132,19 +142,6 @@
         await ValueChanged.InvokeAsync(Value);
     }
 
-    private void DragEnter(DragEventArgs obj)
-    {
-        if (Disabled)
-            return;
-
-        _hoverClass = "dragover";
-    }
-
-    private void DragLeave(DragEventArgs obj)
-    {
-        _hoverClass = "";
-    }
-
     private void Written(FileWrittenEventArgs e)
     {
         if (e.Position == e.File.Size)
@@ -154,6 +151,17 @@
         }
 
         _progress[e.File] = (int)((double)e.Position / e.File.Size * 100);
+    }
+
+    protected override void OnParametersSet()
+    {
+        _disabledClass = Disabled ? "disabled" : "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JSRuntime.InvokeVoidAsync("setupPicker");
     }
 
 }
