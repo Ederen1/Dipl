@@ -32,7 +32,5 @@ public static class ServiceCollectionExtensions
 
             return smtpClient;
         });
-
-        serviceCollection.AddScoped<IStoreService, FileStoreService>();
     }
 }

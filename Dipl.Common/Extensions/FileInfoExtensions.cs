@@ -10,7 +10,6 @@ public static class FileInfoExtensions
         {
             Path = RemoveBeforeSubstring(info.FullName, basePath),
             Created = info.CreationTime,
-            Updated = info.LastWriteTime,
             IsFolder = info is DirectoryInfo,
             Size = info is System.IO.FileInfo fileInfo ? fileInfo.Length : 0
         };

@@ -137,7 +137,7 @@
 
         <div class="stats">
             @Model.Files.Length item@(Model.Files.Length != 1 ? "s" : ""),
-            @(FileUtils.BytesToString(Model.Files.Sum(f => f.Size))) in total ·
+            @(FileUtils.BytesToString(Model.Files.Sum(f => f.Size))) in total
         </div>
 
         <div class="files">
