@@ -1,0 +1,3329 @@
+Project Path: Dipl
+
+Source Tree:
+
+```
+Dipl
+├── LICENSE
+├── identifier.sqlite
+├── Dipl.sln
+├── Dipl.Web
+│   ├── Program.cs
+│   ├── Dipl.Web.csproj
+│   ├── appsettings.Development.json
+│   ├── Endpoints
+│   │   ├── DownloadEndpointsWebApplicationExtensions.cs
+│   │   └── LoginEndpointsWebApplicationExtensions.cs
+│   ├── Components
+│   │   ├── _Imports.razor
+│   │   ├── Pages
+│   │   │   ├── FailSignin.razor
+│   │   │   ├── ManageLinks.razor
+│   │   │   ├── Home.razor
+│   │   │   ├── Request.razor
+│   │   │   ├── Error.razor
+│   │   │   └── Link.razor
+│   │   ├── FileUpload.razor
+│   │   ├── Layout
+│   │   │   └── MainLayout.razor
+│   │   ├── FileRequest.razor
+│   │   ├── MultipleEmailEdit.razor
+│   │   ├── Routes.razor
+│   │   ├── App.razor
+│   │   ├── FilePicker.razor
+│   │   ├── ConfirmButton.razor
+│   │   ├── FilePicker.razor.css
+│   │   └── Enums
+│   │       └── UploadType.cs
+│   ├── Properties
+│   │   └── launchSettings.json
+│   ├── Services
+│   │   └── FileManagerService.cs
+│   ├── Extensions
+│   │   └── ServiceCollectionExtensions.cs
+│   ├── wwwroot
+│   │   ├── favicon.png
+│   │   └── main.css
+│   ├── proj.dmm
+│   ├── appsettings.json
+│   └── Models
+│       └── FileUploadModel.cs
+├── Dipl.Common
+│   ├── Dipl.Common.csproj
+│   ├── Configs
+│   │   ├── FileStoreConfiguration.cs
+│   │   ├── SmtpSettings.cs
+│   │   └── EmailSenderSettings.cs
+│   ├── Util
+│   │   ├── StringExtensions.cs
+│   │   └── FileUtils.cs
+│   ├── Extensions
+│   │   └── FileInfoExtensions.cs
+│   └── Types
+│       └── FileInfo.cs
+└── Dipl.Business
+    ├── AppDbContext.cs
+    ├── Services
+    │   ├── FileStoreService.cs
+    │   ├── UploadLinksService.cs
+    │   ├── RequestLinksService.cs
+    │   ├── Interfaces
+    │   │   └── IStoreService.cs
+    │   ├── EmailSenderService.cs
+    │   ├── UsersService.cs
+    │   ├── Extensions
+    │   │   └── ServiceCollectionExtensions.cs
+    │   └── UserAuthenticationService.cs
+    ├── Migrations
+    ├── Dipl.Business.csproj
+    ├── EmailTemplates
+    │   ├── NotifyUserUploadedRequest.razor
+    │   ├── NotifyUserRequested.razor
+    │   └── NotifyUserUploaded.razor
+    ├── Extensions
+    │   └── ClaimsIdentityExtensions.cs
+    ├── EmailModels
+    │   ├── NotifyUserUploadedModel.cs
+    │   ├── NotifyRequestUploadedModel.cs
+    │   └── NotifyUserRequestedModel.cs
+    ├── Entities
+    │   ├── RequestLink.cs
+    │   ├── RequestLinkUploadSlot.cs
+    │   ├── User.cs
+    │   └── UploadLink.cs
+    └── Models
+        ├── CreateUploadLinkModel.cs
+        ├── FileInfoModel.cs
+        ├── RequestLinkCreateModel.cs
+        ├── UploadingFile.cs
+        └── LinkWithListedFiles.cs
+
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Program.cs`:
+
+```cs
+using System.Security.Claims;
+using Blazorise;
+using Blazorise.Bootstrap5;
+using Blazorise.Icons.FontAwesome;
+using Dipl.Business;
+using Dipl.Business.Services.Extensions;
+using Dipl.Common.Configs;
+using Dipl.Web.Components;
+using Dipl.Web.Endpoints;
+using Dipl.Web.Extensions;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
+
+builder.Services.AddBlazorise(options => { options.Immediate = true; }).AddBootstrap5Providers().AddFontAwesomeIcons();
+
+// Add services to the container.
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
+builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
+builder.Services.Configure<FileStoreConfiguration>(configuration.GetSection("FileStoreConfiguration"));
+
+builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; }).AddMicrosoftAccount(
+    opt =>
+    {
+        opt.SignInScheme = "Cookies";
+        opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
+        opt.ClientSecret = configuration["Authentication:Microsoft:ClientSecret"]!;
+
+        opt.Events.OnTicketReceived = context =>
+        {
+            var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value ??
+                        context.Principal?.FindFirst("email")?.Value;
+
+            if (string.IsNullOrEmpty(email))
+                return Task.CompletedTask;
+
+            var allowedDomains = configuration.GetSection("AllowedDomains").Get<string[]>();
+            if (allowedDomains?.Any(x => email.EndsWith(x)) == true)
+                return Task.CompletedTask;
+
+            var allowedEmails = configuration.GetSection("AllowedEmails").Get<string[]>();
+            if (allowedEmails?.Contains(email) == true)
+                return Task.CompletedTask;
+
+            context.Response.Redirect("/failSignin");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        };
+    });
+
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddAuthorization();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseLazyLoadingProxies();
+    options.UseSqlite(configuration["ConnectionStrings:Db"]!);
+    options.EnableSensitiveDataLogging();
+    options.EnableDetailedErrors();
+});
+builder.Services.AddServiceLayer();
+builder.Services.AddWebServiceLayer();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error", true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseAntiforgery();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// app.UseDomainWhitelist();
+
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
+    db.EnsureDeleted();
+    db.EnsureCreated();
+    // await db.MigrateAsync();
+}
+
+app.MapLoginEndpoints();
+app.MapDownloadEndpoints();
+
+app.Run();
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Endpoints/DownloadEndpointsWebApplicationExtensions.cs`:
+
+```cs
+using System.IO.Compression;
+using Dipl.Business;
+using Dipl.Business.Services;
+using Dipl.Business.Services.Interfaces;
+using Dipl.Common.Util;
+using Microsoft.EntityFrameworkCore;
+
+namespace Dipl.Web.Endpoints;
+
+public static class DownloadEndpointsWebApplicationExtensions
+{
+    public static void MapDownloadEndpoints(this WebApplication app)
+    {
+        app.MapGet("/download/fromUpload/{linkId:guid}",
+            async (Guid linkId, AppDbContext dbContext, IStoreService storeService, HttpContext context) =>
+            {
+                var link = await dbContext.UploadLinks.FindAsync(linkId) ??
+                           throw new Exception($"Unable to find link with id {linkId}");
+                var files = await storeService.ListFolder(link.LinkId.ToString());
+                if (files is null)
+                {
+                    app.Logger.LogError("Link folder {} does not exist", link.LinkId);
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+
+                var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
+
+                // Set the Content-Disposition header for the file name
+                context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
+                // Set the content type for ZIP files
+                context.Response.Headers.ContentType = "application/zip";
+
+                using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
+                foreach (var file in files)
+                {
+                    await using var fs = await storeService.GetFile(file.Path);
+                    var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
+                    await using var entryStream = entry.Open();
+                    await fs.CopyToAsync(entryStream);
+                }
+            });
+
+        app.MapGet("/download/fromUpload/{linkId:guid}/{fileName}",
+            async (Guid linkId, string fileName, UploadLinksService linksService) =>
+            {
+                var file = await linksService.GetFile(linkId, fileName);
+                return Results.File(file, "application/octet-stream");
+            });
+
+        app.MapGet("/download/fromRequest/{linkId:guid}/{slotId:guid}/{fileName}", async (Guid slotId, Guid linkId,
+            string fileName, AppDbContext dbContext, IStoreService storeService) =>
+        {
+            var link = await dbContext.RequestLinks.Include(requestLink => requestLink.UploadSlots)
+                .FirstOrDefaultAsync(x => x.LinkId == linkId);
+            if (link is null)
+            {
+                app.Logger.LogError("Unable to find link by id {}", linkId);
+                return Results.NotFound();
+            }
+
+            if (link.UploadSlots.All(slot => slot.RequestLinkUploadSlotId != slotId))
+            {
+                app.Logger.LogError("Unable to find upload slot with id {} for link {}", slotId, link.LinkTitle);
+                return Results.NotFound();
+            }
+
+            var file = await storeService.GetFile($"{linkId}/{slotId}/{fileName}");
+            return Results.File(file, "application/octed-stream");
+        });
+
+        app.MapGet("/download/fromRequest/{linkId:guid}/{slotId:guid}", async (Guid slotId, Guid linkId,
+            AppDbContext dbContext, IStoreService storeService, HttpContext context) =>
+        {
+            var link = await dbContext.RequestLinks.Include(requestLink => requestLink.UploadSlots)
+                .FirstOrDefaultAsync(x => x.LinkId == linkId);
+            if (link is null)
+            {
+                app.Logger.LogError("Unable to find link by id {}", linkId);
+                context.Response.StatusCode = 404;
+                return;
+            }
+
+            var slot = link!.UploadSlots.FirstOrDefault(slot => slot.RequestLinkUploadSlotId == slotId);
+            if (slot == null)
+            {
+                app.Logger.LogError("Unable to find upload slot with id {} for link {}", slotId, link.LinkTitle);
+                context.Response.StatusCode = 404;
+                return;
+            }
+
+            var files = await storeService.ListFolder($"{linkId}/{slotId}");
+            if (files is null)
+            {
+                app.Logger.LogError("Link folder '{}/{}' does not exist", linkId, slotId);
+                context.Response.StatusCode = 404;
+                return;
+            }
+
+            var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
+
+            // Set the Content-Disposition header for the file name
+            context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
+            // Set the content type for ZIP files
+            context.Response.Headers.ContentType = "application/zip";
+
+            using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
+            foreach (var file in files)
+            {
+                await using var fs = await storeService.GetFile(file.Path);
+                var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
+                await using var entryStream = entry.Open();
+                await fs.CopyToAsync(entryStream);
+            }
+        });
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Endpoints/LoginEndpointsWebApplicationExtensions.cs`:
+
+```cs
+using System.Security.Claims;
+using Dipl.Business.Extensions;
+using Dipl.Business.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
+
+namespace Dipl.Web.Endpoints;
+
+public static class LoginEndpointsWebApplicationExtensions
+{
+    public static void MapLoginEndpoints(this WebApplication app)
+    {
+        app.MapGet("/Account/Login", (string returnUrl) =>
+        {
+            var props = new AuthenticationProperties
+            {
+                RedirectUri = "/Account/LoginCallback?ReturnUrl=" + returnUrl
+            };
+
+            return Results.Challenge(props, [MicrosoftAccountDefaults.AuthenticationScheme]);
+        });
+
+        app.MapGet("/Account/LoginCallback", async (HttpContext context, UsersService userService, string returnUrl) =>
+        {
+            var identity = context.User.Identity as ClaimsIdentity;
+            if (identity == null || !identity.IsAuthenticated)
+                return Results.Redirect("/");
+
+            var user = identity.MapToUser();
+            await userService.CreateIfNotExists(user);
+
+            return Results.Redirect(returnUrl);
+        });
+
+        app.MapGet("/Account/Logout", () => Results.SignOut(new AuthenticationProperties { RedirectUri = "/" }));
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/_Imports.razor`:
+
+```razor
+﻿@using Blazorise;
+@using Blazorise.Components;
+@using System.Net.Http
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using Dipl.Web
+@using Dipl.Web.Components
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/FailSignin.razor`:
+
+```razor
+@page "/failSignin"
+
+<Container>
+    <h1>Unable to sign in</h1>
+    <p>You are unable to sign in because your domain is not in the whitelist</p>
+    <p>Please contact system administrator</p>
+    <Button Type="ButtonType.Link" Color="Color.Primary" To="/">Go back</Button>
+</Container>
+
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/ManageLinks.razor`:
+
+```razor
+@page "/manageLinks"
+@using Dipl.Business
+@using Dipl.Business.Entities
+@using Dipl.Business.Services
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
+@using Dipl.Common.Util
+@using Microsoft.EntityFrameworkCore
+
+@attribute [Authorize]
+
+@inject UsersService UsersService
+@inject AppDbContext DbContext
+@inject IStoreService StoreService
+
+<Container>
+    <h3>Request links</h3>
+    <Table Responsive="true" Striped="true" Hoverable="true">
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Title</TableHeaderCell>
+                <TableHeaderCell>Message</TableHeaderCell>
+                <TableHeaderCell>Created</TableHeaderCell>
+                <TableHeaderCell>Notify On Upload</TableHeaderCell>
+                <TableHeaderCell Width="Width.Px(200)">Actions</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var requestLink in _requestLinks)
+            {
+                <TableRow>
+                    <TableRowCell>
+                        @requestLink.LinkTitle
+                    </TableRowCell>
+                    <TableRowCell>@requestLink.Message</TableRowCell>
+                    <TableRowCell>@requestLink.Created</TableRowCell>
+                    <TableRowCell>@(requestLink.NotifyOnUpload ? "Yes" : "No")</TableRowCell>
+                    <TableRowCell>
+                        <ConfirmButton Color="Color.Danger" Size="Size.Small"
+                                       OnConfirm="@(() => RemoveRequestLink(requestLink))">
+                            Remove
+                        </ConfirmButton>
+                    </TableRowCell>
+                </TableRow>
+                <!-- Nested row for UploadSlots grouping -->
+                <TableRow>
+                    <TableRowCell colspan="5">
+                        @if (requestLink.UploadSlots.Any())
+                        {
+                            <Table Narrow Responsive="true" Striped="true" Hoverable="true" Class="mb-0">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHeaderCell>Email</TableHeaderCell>
+                                        <TableHeaderCell>Size</TableHeaderCell>
+                                        <TableHeaderCell>Extensions</TableHeaderCell>
+                                        <TableHeaderCell>Last uploaded</TableHeaderCell>
+                                        <TableHeaderCell Width="Width.Px(360)">Actions</TableHeaderCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    @foreach (var slot in requestLink.UploadSlots)
+                                    {
+                                        <TableRow>
+                                            <TableRowCell>
+                                                @slot.Email
+                                            </TableRowCell>
+                                            <TableRowCell>
+                                                <Tooltip
+                                                    Style="text-decoration: dotted underline; text-underline-offset: 2px"
+                                                    Display="Display.Inline" Placement="TooltipPlacement.Bottom"
+                                                    Text="@GetSlotFileNames(slot.RequestLinkUploadSlotId)">
+                                                    @GetSize(slot.RequestLinkUploadSlotId)
+                                                </Tooltip>
+                                            </TableRowCell>
+                                            <TableRowCell>
+                                                @GetFileExtensions(slot.RequestLinkUploadSlotId)
+                                            </TableRowCell>
+                                            <TableRowCell>@slot.Uploaded</TableRowCell>
+                                            <TableRowCell Display="Display.Flex" Gap="Gap.Is2">
+                                                <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
+                                                        To="@("/link/" + requestLink.LinkId + "/" + slot.RequestLinkUploadSlotId)">
+                                                    Show files
+                                                </Button>
+                                                <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
+                                                        To="@($"/download/fromRequest/{requestLink.LinkId}/{slot.RequestLinkUploadSlotId}")"
+                                                        Download="@(FileUtils.SanitizePath(slot.Email) + ".zip")">
+                                                    Download .zip
+                                                </Button>
+                                                <ConfirmButton Color="Color.Danger" Size="Size.Small"
+                                                               OnConfirm="@(() => RemoveUploadSlot(requestLink, slot))">
+                                                    Remove Slot
+                                                </ConfirmButton>
+                                            </TableRowCell>
+                                        </TableRow>
+                                    }
+                                </TableBody>
+                            </Table>
+                        }
+                        else
+                        {
+                            <em>No upload slots available.</em>
+                        }
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+    <h3 class="mt-4">Upload Links</h3>
+    <Table Responsive="true" Striped="true" Hoverable="true">
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Title</TableHeaderCell>
+                <TableHeaderCell>Message</TableHeaderCell>
+                <TableHeaderCell>Size</TableHeaderCell>
+                <TableHeaderCell>Extensions</TableHeaderCell>
+                <TableHeaderCell>Created</TableHeaderCell>
+                <TableHeaderCell>Last Uploaded</TableHeaderCell>
+                <TableHeaderCell Width="Width.Px(360)">Actions</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var uploadLink in _uploadLinks)
+            {
+                <TableRow>
+                    <TableRowCell>
+                        @uploadLink.LinkTitle
+                    </TableRowCell>
+                    <TableRowCell>@uploadLink.Message</TableRowCell>
+                    <TableRowCell>
+                        <Tooltip Style="text-decoration: dotted underline; text-underline-offset: 2px"
+                                 Display="Display.Inline" Placement="TooltipPlacement.Bottom"
+                                 Text="@GetSlotFileNames(uploadLink.LinkId)">
+                            @GetSize(uploadLink.LinkId)
+                        </Tooltip>
+                    </TableRowCell>
+                    <TableRowCell>
+                        @GetFileExtensions(uploadLink.LinkId)
+                    </TableRowCell>
+                    <TableRowCell>@uploadLink.Created</TableRowCell>
+                    <TableRowCell>@uploadLink.Uploaded</TableRowCell>
+                    <TableRowCell Display="Display.Flex" Gap="Gap.Is2">
+                        <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
+                                To="@("/link/" + uploadLink.LinkId)">
+                            Show files
+                        </Button>
+                        <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
+                                To="@($"/download/fromUpload/{uploadLink.LinkId}")"
+                                Download="@(FileUtils.SanitizePath(uploadLink.LinkTitle) + ".zip")">
+                            Download .zip
+                        </Button>
+                        <Button Color="Color.Danger" Size="Size.Small"
+                                Clicked="@(() => RemoveUploadLink(uploadLink))">
+                            Remove
+                        </Button>
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</Container>
+
+@code {
+    private List<RequestLink> _requestLinks = [];
+    private List<UploadLink> _uploadLinks = [];
+    private readonly Dictionary<Guid, FileInfo[]> _fileInfos = [];
+    private User _currentUser = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _currentUser = await UsersService.GetCurrentUser();
+        await ReloadData();
+    }
+
+    private async Task ReloadData()
+    {
+        _requestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).ToListAsync();
+        _uploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+        _fileInfos.Clear();
+
+        foreach (var requestLink in _requestLinks)
+        {
+            foreach (var uploadSlot in requestLink.UploadSlots)
+            {
+                if (uploadSlot.Uploaded is null)
+                    continue;
+
+                var infos = await StoreService.ListFolder($"{requestLink.LinkId}/{uploadSlot.RequestLinkUploadSlotId}");
+                if (infos is not null)
+                    _fileInfos.Add(uploadSlot.RequestLinkUploadSlotId, infos);
+            }
+        }
+
+        foreach (var uploadLink in _uploadLinks)
+        {
+            var infos = await StoreService.ListFolder($"{uploadLink.LinkId}");
+            if (infos is not null)
+                _fileInfos.Add(uploadLink.LinkId, infos);
+        }
+    }
+
+    private async Task RemoveRequestLink(RequestLink link)
+    {
+        DbContext.RequestLinks.Remove(link);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+    private async Task RemoveUploadLink(UploadLink link)
+    {
+        DbContext.UploadLinks.Remove(link);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+    private async Task RemoveUploadSlot(RequestLink parentLink, RequestLinkUploadSlot slot)
+    {
+        parentLink.UploadSlots.Remove(slot);
+        await DbContext.SaveChangesAsync();
+        await ReloadData();
+    }
+
+    private string GetSlotFileNames(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        return string.Join("<br>", files.Select(x => x.Name));
+    }
+
+    private string GetSize(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        var fullSize = files.Sum(x => x.Size);
+        return FileUtils.BytesToString(fullSize);
+    }
+
+    private string GetFileExtensions(Guid id)
+    {
+        if (!_fileInfos.TryGetValue(id, out var files))
+            return "";
+
+        var extensions = files.Select(x => '.' + x.Name.Split('.').Last()).GroupBy(x => x).Select(x => $"{x.Key} ({x.Count()})");
+        var result = string.Join(", ", extensions);
+
+        return result;
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/Home.razor`:
+
+```razor
+﻿@page "/"
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IConfiguration Configuration
+
+<PageTitle>Home</PageTitle>
+
+<Container>
+    @if (AnonymousOrCanView)
+    {
+        <Card>
+            <CardHeader Padding="Padding.Is0" Overflow="Overflow.Hidden">
+                <CardTitle Style="font-size: 0;">
+                    <Button Size="Size.Large" Border="Border.RoundedZero"
+                            Color="IsRequest ? Color.Light : Color.Primary"
+                            Clicked="() => IsRequest = false">Send files
+                    </Button>
+                    <AuthorizeView>
+                        <Authorized>
+                            <Button Size="Size.Large" Border="Border.RoundedZero"
+                                    Color="IsRequest ? Color.Primary : Color.Light"
+                                    Clicked="() => IsRequest = true">Request files
+                            </Button>
+                        </Authorized>
+                    </AuthorizeView>
+                </CardTitle>
+            </CardHeader>
+            <CardBody>
+                @if (IsRequest)
+                {
+                    <FileRequest></FileRequest>
+                }
+                else
+                {
+                    <FileUpload></FileUpload>
+                }
+            </CardBody>
+
+        </Card>
+    }
+    else
+    {
+        <Heading Size="HeadingSize.Is4" Margin="Margin.Is3">This site is not configured to be used by anonymous users.
+            Please log in
+        </Heading>
+    }
+</Container>
+
+@code {
+    bool IsRequest { get; set; }
+    bool AnonymousOrCanView { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var allowAnonymous = Configuration.GetValue<bool>("AllowAnonymous");
+        if (allowAnonymous)
+        {
+            AnonymousOrCanView = true;
+            return;
+        }
+
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        AnonymousOrCanView = state.User.Identity?.IsAuthenticated == true;
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/Request.razor`:
+
+```razor
+@page "/request/{linkId:guid}/{slotId:guid}"
+@using Dipl.Business
+@using Dipl.Business.Entities
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
+@using Dipl.Web.Services
+
+@inject FileManagerService FileManagerService
+@inject AppDbContext DbContext
+@inject IConfiguration Configuration
+@inject IStoreService StoreService
+
+
+<Container>
+    @if (_closed && !_canViewAfterClose)
+    {
+        <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
+            Files successfully uploaded!
+        </Div>
+    }
+    else
+    {
+        <Validations @ref="_validations" ValidateOnLoad="false">
+            <Field>
+                <FieldLabel>Message for user</FieldLabel>
+                <FieldBody>
+                    <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
+                              Disabled="_disableEdit"></MemoEdit>
+                </FieldBody>
+            </Field>
+
+            <Field>
+                <FieldLabel>Upload files here</FieldLabel>
+                <FieldBody>
+                    <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload"
+                                                    @bind-DeleteOnlyValue="_alreadyPresentFiles"
+                                                    Disabled="_disableEdit"/>
+                </FieldBody>
+            </Field>
+
+            @if (_closed && _canReopen)
+            {
+                <Button Width="Width.Is100" Color="Color.Success"
+                        Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
+                </Button>
+            }
+            else if (!_closed)
+            {
+                <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
+                </Button>
+            }
+        </Validations>
+    }
+
+</Container>
+
+@code {
+
+    [Parameter]
+    public Guid LinkId { get; set; }
+
+    [Parameter]
+    public Guid SlotId { get; set; }
+
+    private Validations _validations = null!;
+    private bool _closed;
+    private bool _canReopen;
+    private bool _canViewAfterClose;
+    private bool _disableEdit;
+    private List<IFileEntry> _filesToUpload = [];
+    private List<FileInfo> _alreadyPresentFiles = [];
+
+    private RequestLinkUploadSlot Slot { get; set; } = null!;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
+        _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
+        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId) ?? throw new Exception("Unable to find slot");
+        _closed = Slot.Uploaded != null;
+        if (_closed)
+            _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
+
+        _disableEdit = _closed;
+    }
+
+    private async Task Submit()
+    {
+        if (!await _validations.ValidateAll())
+            return;
+
+        if (_alreadyPresentFiles.Count == 0 && _filesToUpload.Count == 0)
+            return;
+
+        _disableEdit = true;
+        _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles);
+        _filesToUpload.Clear();
+        _closed = true;
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/Error.razor`:
+
+```razor
+﻿@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error</PageTitle>
+
+<h1 class="text-danger">Error.</h1>
+<h2 class="text-danger">An error occurred while processing your request.</h2>
+
+@if (ShowRequestId)
+{
+    <p>
+        <strong>Request ID:</strong> <code>@RequestId</code>
+    </p>
+}
+
+<h3>Development Mode</h3>
+<p>
+    Swapping to <strong>Development</strong> environment will display more detailed information about the error that
+    occurred.
+</p>
+<p>
+    <strong>The Development environment shouldn't be enabled for deployed applications.</strong>
+    It can result in displaying sensitive information from exceptions to end users.
+    For local debugging, enable the <strong>Development</strong> environment by setting the <strong>ASPNETCORE_ENVIRONMENT</strong>
+    environment variable to <strong>Development</strong>
+    and restarting the app.
+</p>
+
+@code{
+
+    [CascadingParameter]
+    public HttpContext? HttpContext { get; set; }
+
+    public string? RequestId { get; set; }
+    public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized()
+    {
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Pages/Link.razor`:
+
+```razor
+@page "/link/{linkId:guid}/{slotId:guid?}"
+@using Dipl.Business
+@using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
+@using Dipl.Common.Util
+
+@inject IStoreService StoreService
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+<Container>
+    @{ var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId + "/" + SlotId.Value; }
+    <Row Margin="Margin.Is2.OnY">
+        <Column ColumnSize="ColumnSize.IsAuto">
+            @if (Files.Length == 1)
+            {
+                <Button Type="ButtonType.Link" Color="Color.Primary"
+                        To="@($"/download/{linkWithId}/{Files[0].Name}")"
+                        Download="@Files[0].Name">
+                    <Icon Name="IconName.Download" Class="me-2"/>
+                    Download file
+                </Button>
+            }
+            else if (Files.Length > 1)
+            {
+                <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
+                    <Icon Name="IconName.Download" Class="me-2"/>
+                    Download all files
+                </Button>
+            }
+        </Column>
+        <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
+            Copy link:
+        </Column>
+        <Column>
+            <Div Class="input-group">
+                <TextEdit Disabled="true" Text="@NavigationManager.Uri"></TextEdit>
+                <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
+            </Div>
+        </Column>
+    </Row>
+
+    <Table Striped>
+        <TableHeader>
+            <TableRow>
+                <TableHeaderCell>Name</TableHeaderCell>
+                <TableHeaderCell>Size</TableHeaderCell>
+                <TableHeaderCell Width="Width.Auto">Download</TableHeaderCell>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var file in Files)
+            {
+                <TableRow>
+                    <TableRowCell>@file.Name</TableRowCell>
+                    <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
+                    <TableRowCell Style="width: 0;" Class="text-nowrap">
+                        <Button Type="ButtonType.Link" Color="Color.Primary"
+                                To="@($"/download/{linkWithId}/{file.Name}")"
+                                Download="@file.Name">
+                            <Icon Name="IconName.Download" Class="me-2"/>
+                            Download
+                        </Button>
+                    </TableRowCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</Container>
+
+@code {
+
+    [Parameter]
+    public Guid LinkId { get; set; }
+
+    [Parameter]
+    public Guid? SlotId { get; set; }
+
+    private FileInfo[] Files { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var linkExists = SlotId is not null ? DbContext.RequestLinkUploadSlots.Any(x => x.RequestLinkUploadSlotId == SlotId.Value) : DbContext.UploadLinks.Any(x => x.LinkId == LinkId);
+
+        if (!linkExists)
+            throw new Exception("Link not found");
+
+        Files = await StoreService.ListFolder($"{LinkId}/{SlotId}") ?? [];
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", NavigationManager.Uri);
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/FileUpload.razor`:
+
+```razor
+@using Dipl.Business.Entities
+@using Dipl.Business.Services
+@using Dipl.Common.Types
+@using Dipl.Web.Models
+@using Dipl.Web.Services
+@implements IAsyncDisposable
+
+@inject ILogger<FileUpload> Logger
+@inject FileManagerService FileManagerService
+@inject UserAuthenticationService UserAuthenticationService
+@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+@inject IJSRuntime JsRuntime
+
+@if (_currentUploadLink != null)
+{
+    <Row>
+        <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
+            Copy link:
+        </Column>
+        <Column>
+            <Div Class="input-group">
+                <TextEdit Disabled="true"
+                          Text="@($"{NavigationManager.BaseUri}link/{_currentUploadLink!.LinkId}")"></TextEdit>
+                <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
+            </Div>
+        </Column>
+    </Row>
+}
+
+@if (_closed && !_canViewAfterClose)
+{
+    <div>Upload link created</div>
+    <Button Margin="Margin.Is2.FromTop" Color="Color.Primary" Clicked="GoBack">Go back</Button>
+}
+else
+{
+    <Validations @ref="_validations" ValidateOnLoad="false">
+        <AuthorizeView>
+            <NotAuthorized>
+                <Validation Validator="ValidationRule.IsEmail">
+                    <Field>
+                        <FieldLabel>Your email</FieldLabel>
+                        <FieldBody>
+                            <TextEdit @bind-Text="@_model.GuestEmail" Role="TextRole.Email" Placeholder="Your email..."
+                                      Disabled="_disableEdit">
+                                <Feedback>
+                                    <ValidationError>Enter valid email address</ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </NotAuthorized>
+        </AuthorizeView>
+
+        <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
+            <Field>
+                <FieldLabel>Email to</FieldLabel>
+                <FieldBody>
+                    <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
+                                       @bind-Value="_model.EmailTo" Disabled="_disableEdit"></MultipleEmailEdit>
+                    @if (_emailToValidationStatus == ValidationStatus.Error)
+                    {
+                        <Span TextColor="TextColor.Danger"
+                              TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                    }
+                </FieldBody>
+            </Field>
+        </Validation>
+
+
+        <Validation Validator="ValidationRule.IsNotEmpty">
+            <Field>
+                <FieldLabel>Title</FieldLabel>
+                <FieldBody>
+                    <TextEdit @bind-Text="@_model.LinkTitle" Placeholder="Link title..." Disabled="_disableEdit">
+                        <Feedback>
+                            <ValidationError>Enter link title</ValidationError>
+                        </Feedback>
+                    </TextEdit>
+                </FieldBody>
+            </Field>
+        </Validation>
+
+        <Field>
+            <FieldLabel>Message for user</FieldLabel>
+            <FieldBody>
+                <MemoEdit Rows="5" @bind-Text="@_model.MessageForUser" Placeholder="Message for user..."
+                          Disabled="_disableEdit"></MemoEdit>
+            </FieldBody>
+        </Field>
+
+        <Field>
+            <FieldLabel>Upload files here</FieldLabel>
+            <FieldBody>
+                <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"
+                                                @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
+            </FieldBody>
+        </Field>
+
+        @if (_canReopen && _closed)
+        {
+            <Button Width="Width.Is100" Color="Color.Success"
+                    Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
+            </Button>
+        }
+        else if (!_closed)
+        {
+            <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+        }
+
+
+    </Validations>
+}
+
+
+@code {
+    private Validations _validations = null!;
+    private FileUploadModel _model = new();
+    private List<FileInfo> _alreadyPresentFiles = [];
+    private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
+    private CancellationTokenSource _cts = new();
+    private bool _canViewAfterClose;
+    private bool _canReopen;
+    private UploadLink? _currentUploadLink;
+    private bool _closed;
+    private bool _disableEdit;
+
+    protected override void OnParametersSet()
+    {
+        _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
+        _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+
+    private async Task Submit()
+    {
+        if (!await _validations.ValidateAll())
+            return;
+
+        if (_model.FilesToUpload.Count == 0 && _alreadyPresentFiles.Count == 0)
+            return;
+
+        _disableEdit = true;
+        (_currentUploadLink, _alreadyPresentFiles) = await FileManagerService.UploadAllToFolder(_model, _currentUploadLink, _alreadyPresentFiles);
+        _model.FilesToUpload.Clear();
+        _closed = true;
+    }
+
+    private void ValidateEmails(ValidatorEventArgs e)
+    {
+        e.Status = !_model.EmailTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
+    }
+
+    private void GoBack()
+    {
+        _closed = false;
+        _model = new FileUploadModel();
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", $"{NavigationManager.BaseUri}link/{_currentUploadLink!.LinkId}");
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Layout/MainLayout.razor`:
+
+```razor
+﻿@inherits LayoutComponentBase
+
+@inject NavigationManager NavigationManager
+
+<Layout>
+    <LayoutHeader>
+        <Bar Breakpoint="Breakpoint.Desktop"
+             Background="Background.Dark"
+             ThemeContrast="ThemeContrast.Dark"
+             Padding="Padding.Is2">
+            <BarBrand>
+                <BarItem>
+                    <BarLink To="/">Dipl</BarLink>
+                </BarItem>
+            </BarBrand>
+            <BarToggler/>
+            <BarMenu>
+                <BarStart>
+                    <AuthorizeView>
+                        <Authorized>
+                            <BarItem>
+                                <BarLink To="/manageLinks">Manage links</BarLink>
+                            </BarItem>
+                        </Authorized>
+                    </AuthorizeView>
+                </BarStart>
+                <BarEnd>
+                    <BarItem>
+                        <AuthorizeView>
+                            <NotAuthorized>
+                                <Button Color="Color.Primary" Type="ButtonType.Link" To="@ReturnUrl">Log in</Button>
+                            </NotAuthorized>
+                            <Authorized>
+                                <Button Color="Color.Secondary" Type="ButtonType.Link" To="Account/Logout">Logout
+                                </Button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </BarItem>
+                </BarEnd>
+            </BarMenu>
+        </Bar>
+    </LayoutHeader>
+    <LayoutContent Padding="Padding.Is3.FromTop">
+        @Body
+    </LayoutContent>
+</Layout>
+
+@code
+{
+    string ReturnUrl => $"Account/Login?returnUrl={NavigationManager.Uri}";
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/FileRequest.razor`:
+
+```razor
+@using Dipl.Business.Models
+@using Dipl.Business.Services
+@implements IAsyncDisposable
+
+@inject ILogger<FileRequest> Logger
+@inject RequestLinksService RequestLinksService
+@inject UserAuthenticationService UserAuthenticationService
+
+
+
+@if (!_closed)
+{
+    <Validations @ref="_validations" ValidateOnLoad="false">
+        <Validation Validator="ValidateEmails" @bind-Status="_emailToValidationStatus">
+            <Field>
+                <FieldLabel>Send to</FieldLabel>
+                <FieldBody>
+                    <MultipleEmailEdit ValidationStatus="_emailToValidationStatus"
+                                       @bind-Value="_createModel.SendTo"></MultipleEmailEdit>
+                    @if (_emailToValidationStatus == ValidationStatus.Error)
+                    {
+                        <Span TextColor="TextColor.Danger"
+                              TextSize="TextSize.Small">Enter at least one valid email address</Span>
+                    }
+                </FieldBody>
+            </Field>
+        </Validation>
+
+        <Validation Validator="ValidationRule.IsNotEmpty">
+            <Field>
+                <FieldLabel>Link name</FieldLabel>
+                <FieldBody>
+                    <TextEdit @bind-Text="@_createModel.LinkName" Placeholder="Enter link name...">
+                        <Feedback>
+                            <ValidationError>Enter link name</ValidationError>
+                        </Feedback>
+                    </TextEdit>
+                </FieldBody>
+            </Field>
+        </Validation>
+
+        <Field>
+            <FieldLabel>Message for user</FieldLabel>
+            <FieldBody>
+                <MemoEdit Rows="5" @bind-Text="@_createModel.MessageForUser"
+                          Placeholder="Message for user..."></MemoEdit>
+            </FieldBody>
+        </Field>
+
+        <Field>
+            <Check @bind-Checked="@_createModel.NotifyOnUpload">
+                Notify me when files are uploaded
+            </Check>
+        </Field>
+
+        <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Create Link</Button>
+    </Validations>
+}
+else
+{
+    <div>Request link created</div>
+    <Button Margin="Margin.Is2.FromTop" Color="Color.Primary" Clicked="GoBack">Go back</Button>
+}
+
+
+@code {
+    private Validations _validations = null!;
+    private RequestLinkCreateModel _createModel = new();
+    private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
+    private CancellationTokenSource _cts = new();
+    private bool _closed;
+
+    public async ValueTask DisposeAsync()
+    {
+        await _cts.CancelAsync();
+        _cts.Dispose();
+    }
+
+    private async Task Submit()
+    {
+        if (!await _validations.ValidateAll())
+            return;
+
+        await RequestLinksService.CreateLink(_createModel);
+        _closed = true;
+    }
+
+    private void ValidateEmails(ValidatorEventArgs e)
+    {
+        e.Status = !_createModel.SendTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
+    }
+
+    private void GoBack()
+    {
+        _closed = false;
+        _createModel = new RequestLinkCreateModel();
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/MultipleEmailEdit.razor`:
+
+```razor
+@using Dipl.Common.Util
+<div
+    class="@("form-control d-flex gap-1 align-items-center flex-wrap " + (ValidationStatus == ValidationStatus.Error ? "border-danger" : ""))"
+    style="@(Disabled ? "background-color: #e9ecef" : "")"
+>
+    @foreach (var email in Value)
+    {
+        <Badge Color="Color.Primary" Padding="Padding.Is2.OnAll" TextSize="TextSize.Small"
+               CloseClicked="Disabled ? null : () => RemoveEmail(email)">
+            <span class="pe-1">@email</span>
+        </Badge>
+    }
+    <TextEdit
+        @bind-Text="_currentEmail"
+        Style="@_editStyle"
+        Width="Width.Auto"
+        Role="TextRole.Email"
+        FocusOut="FocusLost"
+        KeyDown="KeyDown"
+        Disabled="Disabled">
+    </TextEdit>
+</div>
+
+@code {
+
+    [Parameter]
+    public List<string> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<string>> ValueChanged { get; set; }
+
+    [Parameter]
+    public ValidationStatus ValidationStatus { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string _currentEmail = "";
+    private string _editStyle = ValidStyle;
+
+    private const string ValidStyle = "outline: none !important; box-shadow: none !important; border-width: 0 0 1px 0 !important; border-radius: 0 !important; border-color: rgb(206, 212, 218); !important; background-image: none !important;";
+    private const string InvalidStyle = ValidStyle + "border-color: red !important";
+
+    private void RemoveEmail(string email)
+    {
+        Value.Remove(email);
+    }
+
+    private async Task KeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key != "Enter")
+            return;
+
+        var email = _currentEmail.ParseAsEmail();
+        if (email == null)
+        {
+            _editStyle = InvalidStyle;
+            return;
+        }
+
+        await SetEmail(email);
+    }
+
+    private async Task SetEmail(string email)
+    {
+        Value.Add(email);
+        await ValueChanged.InvokeAsync(Value);
+        _editStyle = ValidStyle;
+        _currentEmail = "";
+    }
+
+    private async Task FocusLost()
+    {
+        var email = _currentEmail.ParseAsEmail();
+        if (email == null)
+        {
+            _currentEmail = "";
+            _editStyle = ValidStyle;
+            return;
+        }
+
+        await SetEmail(email);
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Routes.razor`:
+
+```razor
+﻿@using Dipl.Web.Components.Layout
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
+    </Found>
+</Router>
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/App.razor`:
+
+```razor
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/"/>
+    <link href="main.css" rel="stylesheet"/>
+    <link href="Dipl.Web.styles.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+    <link href="_content/Blazorise.Icons.FontAwesome/v6/css/all.min.css" rel="stylesheet">
+
+    <link href="_content/Blazorise/blazorise.css" rel="stylesheet"/>
+    <link href="_content/Blazorise.Bootstrap5/blazorise.bootstrap5.css" rel="stylesheet"/>
+    <HeadOutlet @rendermode="InteractiveServer"/>
+</head>
+
+<body>
+<Routes @rendermode="InteractiveServer"/>
+<script src="_framework/blazor.web.js"></script>
+<script>
+    window.setupPicker = () => {
+        let picker = document.querySelector("#picker input");
+        picker.onclick = (e) => {
+            e.preventDefault();
+        }
+        let pickerContainer = document.querySelector("#picker");
+        pickerContainer.ondragenter = () => pickerContainer.classList.add("dragover");
+        pickerContainer.ondragover = () => pickerContainer.classList.add("dragover");
+        pickerContainer.ondragleave = () => pickerContainer.classList.remove("dragover");
+    }
+
+</script>
+</body>
+
+</html>
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/FilePicker.razor`:
+
+```razor
+@using Blazorise.Icons.FontAwesome
+@using Dipl.Common.Types
+@using Dipl.Common.Util
+@inject IJSRuntime JSRuntime
+
+<div id="picker" class="picker @_disabledClass">
+    @if (!Disabled)
+    {
+        <div class="w-100 d-flex justify-content-center lowest">
+            <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-center mx-auto">
+            <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
+            </Button>
+            <Button Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add
+                folder
+            </Button>
+        </div>
+    }
+    @foreach (var file in Value)
+    {
+        <Card>
+            <CardBody>
+                <CardTitle Padding="Padding.Is0.FromBottom">@file.Name</CardTitle>
+                <CardText>
+                    <Div Display="Display.Flex">
+                        <span>@FileUtils.BytesToString(file.Size)</span>
+                        @if (!Disabled)
+                        {
+                            <Button Padding="Padding.Is0.OnAll" Margin="Margin.IsAuto.FromStart"
+                                    Clicked="() => RemoveFile(file)">
+                                <Blazorise.Icon Name="FontAwesomeIcons.Trash"/>
+                            </Button>
+                        }
+                    </Div>
+                    @{ var fileProgress = _progress.GetValueOrDefault(file, -1); }
+                    @if (fileProgress != -1)
+                    {
+                        <Progress Value="@fileProgress"></Progress>
+                    }
+                </CardText>
+            </CardBody>
+        </Card>
+    }
+
+    @foreach (var file in DeleteOnlyValue)
+    {
+        <Card>
+            <CardBody>
+                <CardTitle Padding="Padding.Is0.FromBottom">@file.Name</CardTitle>
+                <CardText>
+                    <Div Display="Display.Flex">
+                        <span>@FileUtils.BytesToString(file.Size)</span>
+                        @if (!Disabled)
+                        {
+                            <Button Padding="Padding.Is0.OnAll" Margin="Margin.IsAuto.FromStart"
+                                    Clicked="() => RemoveFileDeleteOnly(file)">
+                                <Blazorise.Icon Name="FontAwesomeIcons.Trash"/>
+                            </Button>
+                        }
+                    </Div>
+                </CardText>
+            </CardBody>
+        </Card>
+    }
+
+    <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple Directory="_pickingDirectory"/>
+</div>
+
+@code {
+
+    [Parameter]
+    public List<IFileEntry> Value { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<IFileEntry>> ValueChanged { get; set; }
+
+    [Parameter]
+    public List<FileInfo> DeleteOnlyValue { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<FileInfo>> DeleteOnlyValueChanged { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private FileEdit _fileEdit = null!;
+    private string _disabledClass = "";
+    private Dictionary<IFileEntry, int> _progress = [];
+
+    private bool _pickingDirectory = true;
+
+    private async Task AddFile()
+    {
+        _pickingDirectory = false;
+        await InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            await _fileEdit.ShowPicker();
+            _pickingDirectory = true;
+        });
+    }
+
+    private async Task AddDirectory()
+    {
+        await InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            await _fileEdit.ShowPicker();
+            _pickingDirectory = true;
+        });
+    }
+
+    private async Task RemoveFile(IFileEntry file)
+    {
+        Value.Remove(file);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task RemoveFileDeleteOnly(FileInfo file)
+    {
+        DeleteOnlyValue.Remove(file);
+        await DeleteOnlyValueChanged.InvokeAsync(DeleteOnlyValue);
+    }
+
+    private async Task OnFileChange(FileChangedEventArgs e)
+    {
+        List<IFileEntry> append = [];
+
+        // Replace values
+        foreach (var file in e.Files)
+        {
+            var idx = Value.FindIndex(x => x.Name == file.Name);
+            if (idx != -1)
+                Value[idx] = file;
+            else
+                append.Add(file);
+        }
+
+        Value.AddRange(append);
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private void Written(FileWrittenEventArgs e)
+    {
+        if (e.Position == e.File.Size)
+        {
+            _progress.Remove(e.File);
+            return;
+        }
+
+        _progress[e.File] = (int)((double)e.Position / e.File.Size * 100);
+    }
+
+    protected override void OnParametersSet()
+    {
+        _disabledClass = Disabled ? "disabled" : "";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JSRuntime.InvokeVoidAsync("setupPicker");
+    }
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/ConfirmButton.razor`:
+
+```razor
+<Div style="min-width: 140px">
+    @if (!_showConfirmation)
+    {
+        <Button @attributes="AdditionalAttributes"
+                Color="@Color"
+                Size="@Size"
+                Outline="@Outline"
+                Disabled="@Disabled"
+                @onclick="ShowConfirmation">
+            @ChildContent
+        </Button>
+    }
+    else
+    {
+        <Button Color="Color.Success"
+                Size="@Size"
+                Outline="@Outline"
+                @onclick="Confirm">
+            Confirm
+        </Button>
+        <Button Color="Color.Secondary"
+                Size="@Size"
+                Outline="@Outline"
+                @onclick="Cancel">
+            Cancel
+        </Button>
+    }
+</Div>
+
+
+@code {
+    private bool _showConfirmation;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Primary;
+
+    [Parameter]
+    public Size Size { get; set; } = Size.Default;
+
+    [Parameter]
+    public bool Outline { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
+
+    private void ShowConfirmation()
+    {
+        if (Disabled)
+            return;
+
+        _showConfirmation = true;
+    }
+
+    private async Task Confirm()
+    {
+        _showConfirmation = false;
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync(null);
+        }
+    }
+
+    private void Cancel()
+    {
+        _showConfirmation = false;
+    }
+
+}
+
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Components/Enums/UploadType.cs`:
+
+```cs
+namespace Dipl.Web.Components.Enums;
+
+public enum UploadType
+{
+    Requested,
+    Upload
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Services/FileManagerService.cs`:
+
+```cs
+﻿using Blazorise;
+using Dipl.Business;
+using Dipl.Business.EmailModels;
+using Dipl.Business.Entities;
+using Dipl.Business.Models;
+using Dipl.Business.Services;
+using Dipl.Business.Services.Interfaces;
+using Dipl.Web.Models;
+using FileInfo = Dipl.Common.Types.FileInfo;
+
+namespace Dipl.Web.Services;
+
+public class FileManagerService(
+    IStoreService storeService,
+    EmailSenderService emailSenderService,
+    UsersService usersService,
+    RequestLinksService requestLinksService,
+    AppDbContext dbContext)
+{
+    private const int UploadChunkSize = 4;
+
+    public async Task<(UploadLink, List<FileInfo>)> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink,
+        List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
+    {
+        var createdBy = await usersService.GetCurrentUser();
+        var mappedModel = model.MapToCreateUploadModel(createdBy.UserName);
+
+        var link = uploadLink ?? new UploadLink();
+        link.CreatedById = createdBy.UserId;
+        link.LinkTitle = model.LinkTitle;
+        link.Message = model.MessageForUser;
+        link.Uploaded = DateTime.Now;
+
+        if (uploadLink is null)
+            await dbContext.UploadLinks.AddAsync(link, cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await UploadFiles(model.FilesToUpload, alreadyPresentFiles, link.LinkId.ToString(), cancellationToken);
+        await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
+
+        var folderContents = await storeService.ListFolder($"{link.LinkId}");
+        if (folderContents is null)
+            throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
+
+        return (link, folderContents.ToList());
+    }
+
+    public async Task<List<FileInfo>> RespondToFileRequest(RequestLinkUploadSlot slot, List<IFileEntry> filesToUpload,
+        List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
+    {
+        var link = slot.RequestLink;
+        var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
+
+        await UploadFiles(filesToUpload, alreadyPresentFiles, dir, cancellationToken);
+        slot.Uploaded = DateTime.Now;
+
+        if (link.NotifyOnUpload)
+        {
+            var notifyModel = new NotifyRequestUploadedModel
+            {
+                Message = slot.Message ?? "",
+                LinkTitle = link.LinkTitle!,
+                Link = link,
+                UploadSlot = slot,
+                EmailTo = link.CreatedBy.Email,
+                Files = filesToUpload.Select(x => new FileInfoModel
+                {
+                    Name = x.Name,
+                    Size = x.Size
+                }).ToArray()
+            };
+
+            await requestLinksService.NotifyFileRequestUpload(notifyModel, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        var folderContents = await storeService.ListFolder($"{link.LinkId}/{slot.RequestLinkUploadSlotId}");
+        if (folderContents is null)
+            throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
+
+        return folderContents.ToList();
+    }
+
+    private async Task UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles, string folder,
+        CancellationToken cancellationToken)
+    {
+        var existingFiles = await storeService.ListFolder(folder);
+        var (keepUpload, toDelete) = DiffFiles(files, alreadyPresentFiles, existingFiles);
+
+        foreach (var file in toDelete)
+            await storeService.DeleteFile(file.Name, folder);
+
+        foreach (var chunkedFiles in keepUpload.Chunk(UploadChunkSize))
+        {
+            var tasks = chunkedFiles.Select(file => storeService.InsertFile(file.Name, folder,
+                file.OpenReadStream(long.MaxValue, cancellationToken), cancellationToken));
+
+            await Task.WhenAll(tasks);
+        }
+    }
+
+    private (IEnumerable<IFileEntry> keepUpload, IEnumerable<FileInfo> toDelete) DiffFiles(List<IFileEntry> files,
+        List<FileInfo> alreadyPresentFiles, FileInfo[]? existingFiles)
+    {
+        if (existingFiles is null)
+        {
+            if (alreadyPresentFiles.Count != 0)
+                throw new Exception("Logic error");
+
+            return (files, []);
+        }
+
+        var toRemove = existingFiles.Where(f => alreadyPresentFiles.All(apf => apf.Name != f.Name));
+        return (files, toRemove);
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Extensions/ServiceCollectionExtensions.cs`:
+
+```cs
+using Dipl.Web.Services;
+
+namespace Dipl.Web.Extensions;
+
+public static class ServiceCollectionExtensions
+{
+    public static void AddWebServiceLayer(this IServiceCollection services)
+    {
+        services.AddScoped<FileManagerService>();
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Web/Models/FileUploadModel.cs`:
+
+```cs
+using Blazorise;
+using Dipl.Business.Models;
+using Dipl.Common.Util;
+
+namespace Dipl.Web.Models;
+
+public class FileUploadModel
+{
+    public string? GuestEmail { get; set; }
+    public List<string> EmailTo { get; set; } = [];
+    public string LinkTitle { get; set; } = null!;
+    public string? MessageForUser { get; set; }
+    public List<IFileEntry> FilesToUpload { get; set; } = [];
+
+    public CreateUploadLinkModel MapToCreateUploadModel(string? userName)
+    {
+        return new CreateUploadLinkModel
+        {
+            Sender = userName ?? GuestEmail!,
+            FullFolderName = Path.Combine(userName ?? GuestEmail!, FileUtils.SanitizePath(LinkTitle)),
+            LinkTitle = LinkTitle,
+            MessageForUser = MessageForUser,
+            EmailTo = EmailTo,
+            UploadedFileInfoModels = FilesToUpload.Select(f => new FileInfoModel
+            {
+                Name = f.Name,
+                Size = f.Size
+            }).ToList()
+        };
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Configs/FileStoreConfiguration.cs`:
+
+```cs
+namespace Dipl.Common.Configs;
+
+public class FileStoreConfiguration
+{
+    public required string BasePath { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Configs/SmtpSettings.cs`:
+
+```cs
+namespace Dipl.Common.Configs;
+
+public class SmtpSettings
+{
+    public required string Host { get; init; }
+    public required string UserName { get; init; }
+    public required string Password { get; init; }
+    public bool EnableSsl { get; init; }
+    public int Port { get; init; } = 25;
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Configs/EmailSenderSettings.cs`:
+
+```cs
+namespace Dipl.Common.Configs;
+
+public record EmailSenderSettings
+{
+    public required string SenderEmail { get; init; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Util/StringExtensions.cs`:
+
+```cs
+using System.Net.Mail;
+
+namespace Dipl.Common.Util;
+
+public static class StringExtensions
+{
+    public static string? ParseAsEmail(this string email)
+    {
+        var trimmed = email.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+            return null;
+
+        try
+        {
+            var addr = new MailAddress(trimmed);
+            return addr.Address == trimmed ? trimmed : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Util/FileUtils.cs`:
+
+```cs
+using System.Globalization;
+
+namespace Dipl.Common.Util;
+
+public static class FileUtils
+{
+    public static string BytesToString(long byteCount)
+    {
+        string[] suf = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];
+        if (byteCount == 0)
+            return "0" + suf[0];
+
+        var bytes = Math.Abs(byteCount);
+        var place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
+        var num = Math.Round(bytes / Math.Pow(1024, place), 1);
+        return (Math.Sign(byteCount) * num).ToString(CultureInfo.InvariantCulture) + suf[place];
+    }
+
+    public static string SanitizePath(string path)
+    {
+        var notAllowed = Path.GetInvalidPathChars().Concat(Path.GetInvalidFileNameChars());
+
+        path = path.Replace(' ', '_');
+        path = path.ReplaceLineEndings("_");
+        path = new string(path.Where(c => !notAllowed.Contains(c)).ToArray());
+        return path;
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Extensions/FileInfoExtensions.cs`:
+
+```cs
+﻿using FileInfo = Dipl.Common.Types.FileInfo;
+
+namespace Dipl.Common.Extensions;
+
+public static class FileInfoExtensions
+{
+    public static FileInfo MapToFileInfo(this FileSystemInfo info, string basePath)
+    {
+        return new FileInfo
+        {
+            Path = RemoveBeforeSubstring(info.FullName, basePath),
+            Created = info.CreationTime,
+            Updated = info.LastWriteTime,
+            IsFolder = info is DirectoryInfo,
+            Size = info is System.IO.FileInfo fileInfo ? fileInfo.Length : 0
+        };
+    }
+
+    private static string RemoveBeforeSubstring(string input, string substring)
+    {
+        var index = input.IndexOf(substring, StringComparison.Ordinal);
+        return index >= 0 ? input[(index + substring.Length)..] : input;
+    }
+
+    public static IEnumerable<FileInfo> MapToFileInfos(this IEnumerable<FileSystemInfo> infos, string basePath)
+    {
+        return infos.Select(info => info.MapToFileInfo(basePath));
+    }
+
+    public static FileInfo[] MapToFileInfos(this FileSystemInfo[] infos, string basePath)
+    {
+        return MapToFileInfos(infos.AsEnumerable(), basePath).ToArray();
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Common/Types/FileInfo.cs`:
+
+```cs
+﻿namespace Dipl.Common.Types;
+
+public class FileInfo
+{
+    public DateTime Created;
+    public bool IsFolder;
+    public required string Path;
+    public long Size;
+    public DateTime Updated;
+    public string Name => System.IO.Path.GetFileName(Path);
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/AppDbContext.cs`:
+
+```cs
+﻿using Dipl.Business.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace Dipl.Business;
+
+public class AppDbContext(DbContextOptions options) : DbContext(options)
+{
+    public DbSet<User> Users { get; set; }
+    public DbSet<UploadLink> UploadLinks { get; set; }
+    public DbSet<RequestLink> RequestLinks { get; set; }
+    public DbSet<RequestLinkUploadSlot> RequestLinkUploadSlots { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        InitializeData(modelBuilder);
+        base.OnModelCreating(modelBuilder);
+    }
+
+    private static void InitializeData(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<User>().HasData(new User
+        {
+            UserId = User.GuestUserId,
+            Email = "guest@example.com",
+            UserName = "Guest"
+        });
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/FileStoreService.cs`:
+
+```cs
+﻿using Dipl.Business.Services.Interfaces;
+using Dipl.Common.Configs;
+using Dipl.Common.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using FileInfo = Dipl.Common.Types.FileInfo;
+
+namespace Dipl.Business.Services;
+
+public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<FileStoreService> logger)
+    : IStoreService
+{
+    private readonly string _basePath = options.Value.BasePath;
+
+    public async Task InsertFile(string fileName, string folder, Stream contents,
+        CancellationToken cancellationToken = default)
+    {
+        var fullPath = Path.Combine(_basePath, folder, fileName);
+        logger.LogInformation("Uploading file: {}", fileName);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
+        var transferDone = false;
+        try
+        {
+            await contents.CopyToAsync(file, cancellationToken);
+            transferDone = true;
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("File transfer was cancelled.");
+        }
+        finally
+        {
+            await file.DisposeAsync();
+            if (!transferDone)
+                File.Delete(fullPath);
+        }
+    }
+
+    public Task CreateDirectoryIfNotExists(string name)
+    {
+        var fullPath = _basePath + name;
+
+        Directory.CreateDirectory(fullPath);
+        return Task.CompletedTask;
+    }
+
+    public Task<bool> DirectoryExists(string name)
+    {
+        var fullPath = _basePath + name;
+
+        return Task.FromResult(Directory.Exists(fullPath));
+    }
+
+    public Task<Stream> GetFile(string name)
+    {
+        var fullPath = _basePath + name;
+
+        return Task.FromResult<Stream>(File.Open(fullPath, FileMode.Open, FileAccess.Read));
+    }
+
+    public Task DeleteFile(string fileName, string folder)
+    {
+        var fullPath = Path.Combine(_basePath, folder, fileName);
+        File.Delete(fullPath);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteDirectory(string path, bool recursive = false)
+    {
+        var fullPath = _basePath + path;
+
+        Directory.Delete(fullPath, recursive);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteDirectoryContents(string path)
+    {
+        var fullPath = _basePath + path;
+
+        foreach (var file in Directory.GetFiles(fullPath))
+            File.Delete(file);
+
+        foreach (var directory in Directory.GetDirectories(fullPath))
+            Directory.Delete(directory, true);
+
+        return Task.CompletedTask;
+    }
+
+    public Task Move(string source, string dest)
+    {
+        var fullSource = _basePath + source;
+        var fullDest = _basePath + source;
+
+        File.Move(fullSource, fullDest);
+
+        return Task.CompletedTask;
+    }
+
+    public Task<FileInfo[]?> ListFolder(string path)
+    {
+        var fullPath = _basePath + path;
+
+        var directory = new DirectoryInfo(fullPath);
+        if (!directory.Exists)
+            return Task.FromResult<FileInfo[]?>(null);
+
+        var found = directory.GetFileSystemInfos().MapToFileInfos(_basePath);
+        return Task.FromResult<FileInfo[]?>(found);
+    }
+
+    public Task<FileInfo[]> Search(string name)
+    {
+        var directory = new DirectoryInfo(_basePath);
+        var found = directory.GetFileSystemInfos(name, SearchOption.AllDirectories).MapToFileInfos(_basePath);
+
+        return Task.FromResult(found);
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/UploadLinksService.cs`:
+
+```cs
+using Dipl.Business.Services.Interfaces;
+
+namespace Dipl.Business.Services;
+
+public class UploadLinksService(AppDbContext dbContext, IStoreService storeService)
+{
+    public async Task<Stream> GetFile(Guid linkId, string fileName)
+    {
+        var link = await dbContext.UploadLinks.FindAsync(linkId) ?? throw new Exception("Link not found");
+        return await storeService.GetFile($"{link.LinkId}/{fileName}");
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/RequestLinksService.cs`:
+
+```cs
+using Dipl.Business.EmailModels;
+using Dipl.Business.Entities;
+using Dipl.Business.Models;
+using Dipl.Business.Services.Interfaces;
+
+namespace Dipl.Business.Services;
+
+public class RequestLinksService(
+    IStoreService storeService,
+    AppDbContext dbContext,
+    EmailSenderService emailSenderService,
+    UsersService usersService)
+{
+    public async Task CreateLink(RequestLinkCreateModel createModel)
+    {
+        var createdBy = await usersService.GetCurrentUser();
+        var link = new RequestLink
+        {
+            LinkId = Guid.NewGuid(),
+            CreatedById = createdBy.UserId,
+            LinkTitle = createModel.LinkName,
+            Message = createModel.MessageForUser,
+            NotifyOnUpload = createModel.NotifyOnUpload,
+            UploadSlots = createModel.SendTo.Select(sendto => new RequestLinkUploadSlot
+            {
+                RequestLinkUploadSlotId = Guid.NewGuid(),
+                Email = sendto
+            }).ToList()
+        };
+
+        await storeService.CreateDirectoryIfNotExists(link.LinkId.ToString());
+
+        foreach (var userDirectory in link.UploadSlots)
+            await storeService.CreateDirectoryIfNotExists(link.LinkId + "/" + userDirectory.RequestLinkUploadSlotId);
+
+        await dbContext.RequestLinks.AddAsync(link);
+        await dbContext.SaveChangesAsync();
+
+        await emailSenderService.NotifyOfRequest(createModel, link, createdBy.UserName);
+    }
+
+    public async Task NotifyFileRequestUpload(NotifyRequestUploadedModel model,
+        CancellationToken cancellationToken = default)
+    {
+        await emailSenderService.NotifyUserUploadedToRequestLink(model, cancellationToken);
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/Interfaces/IStoreService.cs`:
+
+```cs
+﻿using FileInfo = Dipl.Common.Types.FileInfo;
+
+namespace Dipl.Business.Services.Interfaces;
+
+public interface IStoreService
+{
+    public Task InsertFile(string fileName, string folder, Stream contents,
+        CancellationToken cancellationToken = default);
+
+    public Task CreateDirectoryIfNotExists(string name);
+    public Task<bool> DirectoryExists(string name);
+    public Task<Stream> GetFile(string name);
+    public Task DeleteFile(string fileName, string folder);
+    public Task DeleteDirectory(string path, bool recursive = false);
+    public Task DeleteDirectoryContents(string path);
+    public Task Move(string source, string dest);
+    public Task<FileInfo[]?> ListFolder(string path);
+    public Task<FileInfo[]> Search(string name);
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/EmailSenderService.cs`:
+
+```cs
+using System.Net.Mail;
+using Dipl.Business.EmailModels;
+using Dipl.Business.EmailTemplates;
+using Dipl.Business.Entities;
+using Dipl.Business.Models;
+using Dipl.Common.Configs;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Dipl.Business.Services;
+
+public class EmailSenderService(
+    IOptions<EmailSenderSettings> settings,
+    ILogger<EmailSenderService> logger,
+    SmtpClient smtpClient,
+    HtmlRenderer htmlRenderer,
+    UsersService usersService)
+{
+    private MailAddress Sender => new(settings.Value.SenderEmail);
+
+    public async Task NotifyOfRequest(RequestLinkCreateModel createModel, RequestLink link, string senderName)
+    {
+        var models = link.UploadSlots.Select(slot => new NotifyUserRequestedModel
+        {
+            CreateModel = createModel,
+            RequestLinkId = link.LinkId,
+            CurrentlySendingTo = slot.Email,
+            SenderName = senderName,
+            SlotId = slot.RequestLinkUploadSlotId
+        });
+
+        var renderedTemplates = await Task.WhenAll(models.Select(RenderTemplate<NotifyUserRequested>));
+        var currentUser = await usersService.GetCurrentUser();
+
+        var emails = renderedTemplates.Select((template, i) => new MailMessage
+        {
+            From = Sender,
+            To = { createModel.SendTo[i] },
+            Subject = $"{currentUser.UserName} is requesting files from you",
+            Body = template,
+            IsBodyHtml = true
+        });
+
+        foreach (var email in emails)
+            try
+            {
+                await smtpClient.SendMailAsync(email);
+            }
+            catch
+            {
+                logger.LogError("Unable to send email to {receiver}", string.Join(',', createModel.SendTo));
+            }
+    }
+
+    public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model,
+        CancellationToken cancellationToken = default)
+    {
+        var newModel = new NotifyUserUploadedModel
+        {
+            Model = model,
+            UploadLinkId = link.LinkId
+        };
+
+        var body = await RenderTemplate<NotifyUserUploaded>(newModel);
+
+        var email = new MailMessage
+        {
+            From = Sender,
+            To = { string.Join(',', model.EmailTo) },
+            Subject = $"User {model.Sender} is sending you files",
+            Body = body,
+            IsBodyHtml = true
+        };
+
+        try
+        {
+            await smtpClient.SendMailAsync(email, cancellationToken);
+        }
+        catch
+        {
+            logger.LogError("Unable to send email to {receiver}", link.CreatedBy.Email);
+        }
+    }
+
+    public async Task NotifyUserUploadedToRequestLink(NotifyRequestUploadedModel model,
+        CancellationToken cancellationToken)
+    {
+        var body = await RenderTemplate<NotifyUserUploadedRequest>(model);
+
+        var email = new MailMessage
+        {
+            From = Sender,
+            To = { model.EmailTo },
+            Subject = $"User {model.UploadSlot.Email} uploaded files to {model.LinkTitle}",
+            Body = body,
+            IsBodyHtml = true
+        };
+
+        try
+        {
+            await smtpClient.SendMailAsync(email, cancellationToken);
+        }
+        catch
+        {
+            logger.LogError("Unable to send email to {receiver}", model.EmailTo);
+        }
+    }
+
+    private async Task<string> RenderTemplate<TElem>(object model) where TElem : ComponentBase
+    {
+        var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
+        {
+            var dictionary = new Dictionary<string, object?>
+            {
+                { "Model", model }
+            };
+
+            var parameters = ParameterView.FromDictionary(dictionary);
+            var output = await htmlRenderer.RenderComponentAsync<TElem>(parameters);
+
+            return output.ToHtmlString();
+        });
+
+        return html;
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/UsersService.cs`:
+
+```cs
+using Dipl.Business.Entities;
+using Microsoft.Extensions.Logging;
+
+namespace Dipl.Business.Services;
+
+public class UsersService(
+    AppDbContext dbContext,
+    UserAuthenticationService userAuthenticationService,
+    ILogger<UsersService> _logger)
+{
+    public async Task CreateIfNotExists(User user)
+    {
+        if (await dbContext.Users.FindAsync(user.UserId) != null)
+            return;
+
+        await dbContext.Users.AddAsync(user);
+        await dbContext.SaveChangesAsync();
+    }
+
+    public async Task<User> GetCurrentUser()
+    {
+        var currentUser = await userAuthenticationService.GetUserInfo();
+        if (currentUser == null)
+            return await GetGuestUser();
+
+        var userInDb = await dbContext.Users.FindAsync(currentUser.UserId);
+        if (userInDb != null)
+            return userInDb;
+
+        _logger.LogError("Unable to find logged in user in database. Email: {}, Username: {}", currentUser.Email,
+            currentUser.UserName);
+        throw new Exception("Unable to find logged in user");
+    }
+
+    public ValueTask<User> GetGuestUser()
+    {
+        return dbContext.Users.FindAsync(User.GuestUserId)!;
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/Extensions/ServiceCollectionExtensions.cs`:
+
+```cs
+﻿using System.Net;
+using System.Net.Mail;
+using Dipl.Business.Services.Interfaces;
+using Dipl.Common.Configs;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace Dipl.Business.Services.Extensions;
+
+public static class ServiceCollectionExtensions
+{
+    public static void AddServiceLayer(this IServiceCollection serviceCollection)
+    {
+        serviceCollection.AddScoped<UploadLinksService>();
+        serviceCollection.AddScoped<RequestLinksService>();
+        serviceCollection.AddScoped<UsersService>();
+        serviceCollection.AddScoped<UserAuthenticationService>();
+        serviceCollection.AddScoped<EmailSenderService>();
+        serviceCollection.AddScoped<HtmlRenderer>();
+        serviceCollection.AddScoped<SmtpClient>(sp =>
+        {
+            var settings = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;
+            var smtpClient = new SmtpClient
+            {
+                Host = settings.Host,
+                Port = settings.Port,
+                Credentials = new NetworkCredential(settings.UserName, settings.Password),
+                EnableSsl = settings.EnableSsl,
+                UseDefaultCredentials = false
+            };
+
+            return smtpClient;
+        });
+
+        serviceCollection.AddScoped<IStoreService, FileStoreService>();
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Services/UserAuthenticationService.cs`:
+
+```cs
+using System.Security.Claims;
+using Dipl.Business.Entities;
+using Dipl.Business.Extensions;
+using Microsoft.AspNetCore.Components.Authorization;
+
+namespace Dipl.Business.Services;
+
+public class UserAuthenticationService(AuthenticationStateProvider authenticationStateProvider)
+{
+    public async Task<User?> GetUserInfo()
+    {
+        var identity = (await authenticationStateProvider.GetAuthenticationStateAsync()).User.Identity;
+
+        if (identity is not ClaimsIdentity claimsIdentity || claimsIdentity.IsAuthenticated == false)
+            return null;
+
+        return claimsIdentity.MapToUser();
+    }
+
+    public async Task<bool> IsLoggedIn()
+    {
+        return await GetUserInfo() is not null;
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailTemplates/NotifyUserUploadedRequest.razor`:
+
+```razor
+@using Dipl.Business.EmailModels
+@using Dipl.Common.Util
+@inject NavigationManager NavigationManager
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files Requested</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            padding: 40px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            margin: 0 auto;
+        }
+
+        .container-wrapper {
+            background-color: #fafafa;
+            padding: 20px;
+        }
+
+        @@media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        }
+
+        .sender-info {
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .sender {
+            color: #0061FF;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .sent-text {
+            color: #333;
+            margin: 4px 0;
+        }
+
+        .stats {
+            color: #666;
+            font-size: 14px;
+            margin: 16px 0 24px 0;
+        }
+
+        .files {
+            margin: 24px 0;
+            background: #f7f7f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .file-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            color: #333;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 32px 0 8px 0;
+        }
+
+        .button {
+            border: none;
+            display: inline-block;
+            text-decoration: none;
+            background: #0061FF;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .message {
+            color: black;
+            font-size: 0.9rem;
+        }
+
+        .button:visited {
+            color: #fff;
+        }
+
+        .button:hover {
+            background: #0052D9;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <div class="container">
+        <div class="sender-info">
+            <span class="sender">@Model.UploadSlot.Email uploaded files</span>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Message))
+        {
+            <div class="message">@Model.Message</div>
+            <div class="divider"></div>
+        }
+
+        <div class="stats">
+            @Model.Files.Length item@(Model.Files.Length != 1 ? "s" : ""),
+            @(FileUtils.BytesToString(Model.Files.Sum(f => f.Size))) in total ·
+        </div>
+
+        <div class="files">
+            @foreach (var file in Model.Files)
+            {
+                <div class="file-item">
+                    <div class="file-name">@file.Name</div>
+                    <div class="file-size">@(FileUtils.BytesToString(file.Size))</div>
+                </div>
+            }
+        </div>
+
+        <div class="button-container">
+            <a class="button" style="color: #FFFFFF; text-decoration: none"
+               href="@($"{NavigationManager.BaseUri}link/{Model.Link.LinkId}/{Model.UploadSlot.RequestLinkUploadSlotId}")">
+                <span style="color: #FFFFFF; text-decoration: none">
+                    <font color="#FFFFFF">Get your files</font>
+                </span>
+            </a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+@code {
+
+    [Parameter]
+    public NotifyRequestUploadedModel Model { get; set; } = null!;
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailTemplates/NotifyUserRequested.razor`:
+
+```razor
+@using Dipl.Business.EmailModels
+@inject NavigationManager NavigationManager
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Request</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            padding: 40px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            margin: 0 auto;
+        }
+
+        .container-wrapper {
+            background-color: #fafafa;
+            padding: 20px;
+        }
+
+        @@media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        }
+
+        .request-info {
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .link-name {
+            color: #0061FF;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .request-text {
+            color: #333;
+            margin: 4px 0;
+        }
+
+        .message {
+            color: black;
+            font-size: 0.9rem;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 32px 0 8px 0;
+        }
+
+        .button {
+            border: none;
+            display: inline-block;
+            text-decoration: none;
+            background: #0061FF;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .button:visited {
+            color: #fff;
+        }
+
+        .button:hover {
+            background: #0052D9;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 24px 0;
+        }
+
+        .notify-info {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <div class="container">
+        <div class="request-info">
+            <span class="link-name">@Model.CreateModel.LinkName</span>
+            <div class="request-text">@Model.SenderName is requesting files from you</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.CreateModel.MessageForUser))
+        {
+            <div class="message">@Model.CreateModel.MessageForUser</div>
+            <div class="divider"></div>
+        }
+
+        <div class="button-container">
+            <a class="button" style="color: #FFFFFF; text-decoration: none"
+               href="@($"{NavigationManager.BaseUri}request/{Model.RequestLinkId}/{Model.SlotId}")">
+                <span style="color: #FFFFFF; text-decoration: none">
+                    <font color="#FFFFFF">Upload your files</font>
+                </span>
+            </a>
+        </div>
+
+        @if (Model.CreateModel.NotifyOnUpload)
+        {
+            <div class="notify-info">
+                @Model.SenderName will be notified when you upload files
+            </div>
+        }
+    </div>
+</div>
+</body>
+</html>
+
+@code {
+
+    [Parameter]
+    public NotifyUserRequestedModel Model { get; set; } = null!;
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailTemplates/NotifyUserUploaded.razor`:
+
+```razor
+@using Dipl.Business.Models
+@using Dipl.Common.Util
+@inject NavigationManager NavigationManager
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Files Shared</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            max-width: 600px;
+            padding: 40px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            margin: 0 auto;
+        }
+
+        .container-wrapper {
+            background-color: #fafafa;
+            padding: 20px;
+        }
+
+        @@media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+        }
+
+        .sender-info {
+            margin-bottom: 24px;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .sender {
+            color: #0061FF;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .sent-text {
+            color: #333;
+            margin: 4px 0;
+        }
+
+        .stats {
+            color: #666;
+            font-size: 14px;
+            margin: 16px 0 24px 0;
+        }
+
+        .files {
+            margin: 24px 0;
+            background: #f7f7f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .file-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            color: #333;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .button-container {
+            text-align: center;
+            margin: 32px 0 8px 0;
+        }
+
+        .button {
+            border: none;
+            display: inline-block;
+            text-decoration: none;
+            background: #0061FF;
+            color: #fff;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-weight: 500;
+            font-size: 15px;
+        }
+
+        .message {
+            color: black;
+            font-size: 0.9rem;
+        }
+
+        .button:visited {
+            color: #fff;
+        }
+
+        .button:hover {
+            background: #0052D9;
+        }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-wrapper">
+    <div class="container">
+        <div class="sender-info">
+            <span class="sender">@Model.Model.Sender</span>
+            <div class="sent-text">sent you @Model.Model.LinkTitle</div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.Model.MessageForUser))
+        {
+            <div class="message">@Model.Model.MessageForUser</div>
+            <div class="divider"></div>
+        }
+
+        <div class="stats">
+            @Model.Model.UploadedFileInfoModels.Count item@(Model.Model.UploadedFileInfoModels.Count != 1 ? "s" : ""),
+            @(FileUtils.BytesToString(Model.Model.UploadedFileInfoModels.Sum(f => f.Size))) in total ·
+        </div>
+
+        <div class="files">
+            @foreach (var file in Model.Model.UploadedFileInfoModels)
+            {
+                <div class="file-item">
+                    <div class="file-name">@file.Name</div>
+                    <div class="file-size">@(FileUtils.BytesToString(file.Size))</div>
+                </div>
+            }
+        </div>
+
+        <div class="button-container">
+            <a class="button" style="color: #FFFFFF; text-decoration: none"
+               href="@($"{NavigationManager.BaseUri}link/{Model.UploadLinkId}")">
+                <span style="color: #FFFFFF; text-decoration: none">
+                    <font color="#FFFFFF">Get your files</font>
+                </span>
+            </a>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+@code {
+
+    [Parameter]
+    public NotifyUserUploadedModel Model { get; set; } = null!;
+
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Extensions/ClaimsIdentityExtensions.cs`:
+
+```cs
+using System.Security.Claims;
+using Dipl.Business.Entities;
+
+namespace Dipl.Business.Extensions;
+
+public static class ClaimsIdentityExtensions
+{
+    public static User MapToUser(this ClaimsIdentity identity)
+    {
+        if (!identity.IsAuthenticated)
+            throw new Exception("User is not authenticated");
+
+        return new User
+        {
+            Email = GetEmail(identity),
+            UserId = GetUserId(identity),
+            UserName = identity.Name!
+        };
+    }
+
+    private static string GetEmail(ClaimsIdentity identity)
+    {
+        var email = identity.FindFirst(ClaimTypes.Email) ?? throw new Exception("Email claim not found");
+
+        return email.Value;
+    }
+
+    private static string GetUserId(ClaimsIdentity identity)
+    {
+        var userId = identity.FindFirst(ClaimTypes.NameIdentifier) ??
+                     throw new Exception("NameIdentifier claim not found");
+
+        return userId.Value;
+    }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailModels/NotifyUserUploadedModel.cs`:
+
+```cs
+namespace Dipl.Business.Models;
+
+public class NotifyUserUploadedModel
+{
+    public required Guid UploadLinkId { get; set; }
+
+    public required CreateUploadLinkModel Model { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailModels/NotifyRequestUploadedModel.cs`:
+
+```cs
+using Dipl.Business.Entities;
+using Dipl.Business.Models;
+
+namespace Dipl.Business.EmailModels;
+
+public class NotifyRequestUploadedModel
+{
+    public required string LinkTitle { get; set; }
+    public required string EmailTo { get; set; }
+    public required string Message { get; set; }
+    public required FileInfoModel[] Files { get; set; }
+    public required RequestLink Link { get; set; }
+    public required RequestLinkUploadSlot UploadSlot { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/EmailModels/NotifyUserRequestedModel.cs`:
+
+```cs
+using Dipl.Business.Models;
+
+namespace Dipl.Business.EmailModels;
+
+public class NotifyUserRequestedModel
+{
+    public required Guid RequestLinkId { get; set; }
+
+    public required RequestLinkCreateModel CreateModel { get; set; }
+    public required string CurrentlySendingTo { get; set; }
+    public required string SenderName { get; set; }
+    public required Guid SlotId { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Entities/RequestLink.cs`:
+
+```cs
+namespace Dipl.Business.Entities;
+
+public class RequestLink : BaseLink
+{
+    public bool NotifyOnUpload { get; set; }
+    public virtual ICollection<RequestLinkUploadSlot> UploadSlots { get; set; } = [];
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Entities/RequestLinkUploadSlot.cs`:
+
+```cs
+using System.ComponentModel.DataAnnotations;
+
+namespace Dipl.Business.Entities;
+
+public class RequestLinkUploadSlot
+{
+    public Guid RequestLinkUploadSlotId { get; set; }
+
+    [MaxLength(100)]
+    public required string Email { get; set; }
+
+    [MaxLength(10_000)]
+    public string? Message { get; set; }
+
+    public DateTime? Uploaded { get; set; }
+
+    public Guid RequestLinkId { get; set; }
+    public virtual RequestLink RequestLink { get; set; } = null!;
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Entities/User.cs`:
+
+```cs
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Dipl.Business.Entities;
+
+public class User
+{
+    public static readonly string GuestUserId = "f55aa676-775d-4312-b31c-e9d5848e06d7";
+    public string UserId { get; set; } = null!;
+
+    [MaxLength(256)]
+    public required string Email { get; set; }
+
+    [MaxLength(256)]
+    public required string UserName { get; set; }
+
+    public virtual ICollection<UploadLink> UploadLinks { get; set; } = [];
+    public virtual ICollection<RequestLink> RequestLinks { get; set; } = [];
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Entities/UploadLink.cs`:
+
+```cs
+using System.ComponentModel.DataAnnotations;
+
+namespace Dipl.Business.Entities;
+
+public class UploadLink : BaseLink
+{
+    public DateTime? Uploaded { get; set; }
+}
+
+public abstract class BaseLink
+{
+    [Key]
+    public Guid LinkId { get; set; }
+
+    [MaxLength(200)]
+    public string LinkTitle { get; set; } = null!;
+
+    [MaxLength(10_000)]
+    public string? Message { get; set; }
+
+    public string CreatedById { get; set; }
+    public virtual User CreatedBy { get; set; } = null!;
+
+    public DateTime Created { get; set; } = DateTime.Now;
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Models/CreateUploadLinkModel.cs`:
+
+```cs
+namespace Dipl.Business.Models;
+
+public class CreateUploadLinkModel
+{
+    public required string Sender { get; set; }
+    public required string LinkTitle { get; set; }
+    public string? MessageForUser { get; set; }
+    public required string FullFolderName { get; set; }
+    public List<string> EmailTo { get; set; } = [];
+    public List<FileInfoModel> UploadedFileInfoModels { get; set; } = [];
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Models/FileInfoModel.cs`:
+
+```cs
+namespace Dipl.Business.Models;
+
+public class FileInfoModel
+{
+    public string Name { get; set; } = "";
+    public long Size { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Models/RequestLinkCreateModel.cs`:
+
+```cs
+namespace Dipl.Business.Models;
+
+public class RequestLinkCreateModel
+{
+    public string LinkName { get; set; } = null!;
+    public string MessageForUser { get; set; } = "";
+    public List<string> SendTo { get; set; } = [];
+    public bool NotifyOnUpload { get; set; }
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Models/UploadingFile.cs`:
+
+```cs
+namespace Dipl.Business.Models;
+
+public class UploadFileModel
+{
+    public required Func<long, CancellationToken, Stream> OpenReadStream;
+    public required string Name { get; set; }
+    public long Size { get; set; }
+    public int Progress { get; set; }
+    public required CancellationTokenSource CancellationTokenSource { get; set; }
+
+    public bool Done => Progress >= 100;
+}
+```
+
+`/home/vitek/proj/Dipl/Dipl.Business/Models/LinkWithListedFiles.cs`:
+
+```cs
+// using Dipl.Business.Entities;
+// using FileInfo = Dipl.Common.Types.FileInfo;
+//
+// namespace Dipl.Business.Models;
+//
+// /// <summary>
+// ///     `Link` class currently does not list the files that are in storage, so we need to extend it and
+// ///     add the `Files` property which is loaded from the storage.
+// /// </summary>
+// public class LinkWithListedFiles : Link
+// {
+//     public required FileInfo[] Files { get; set; }
+//
+//     public static LinkWithListedFiles FromLink(Link link, FileInfo[] fileInfos)
+//     {
+//         return new LinkWithListedFiles
+//         {
+//             LinkId = link.LinkId,
+//             Folder = link.Folder,
+//             LinkType = link.LinkType,
+//             CreatedAt = link.CreatedAt,
+//             CreatedById = link.CreatedById,
+//             CreatedBy = link.CreatedBy,
+//             Files = fileInfos,
+//             Permission = link.Permission,
+//             LinkTitle = link.LinkTitle
+//         };
+//     }
+// }
+
+
+```

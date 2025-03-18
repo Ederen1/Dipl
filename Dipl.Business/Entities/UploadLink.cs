@@ -16,7 +16,7 @@ public abstract class BaseLink
     public string LinkTitle { get; set; } = null!;
 
     [MaxLength(10_000)]
-    public string? Message { get; set; }
+    public string Message { get; set; } = "";
 
     public string CreatedById { get; set; }
     public virtual User CreatedBy { get; set; } = null!;

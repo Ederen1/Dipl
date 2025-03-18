@@ -94,7 +94,7 @@ public class FileManagerService(
         foreach (var chunkedFiles in keepUpload.Chunk(UploadChunkSize))
         {
             var tasks = chunkedFiles.Select(file => storeService.InsertFile(file.Name, folder,
-                file.OpenReadStream(long.MaxValue, cancellationToken), cancellationToken));
+                file.OpenReadStream(long.MaxValue, cancellationToken)));
 
             await Task.WhenAll(tasks);
         }

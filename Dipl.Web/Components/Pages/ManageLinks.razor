@@ -200,6 +200,7 @@
 
     private async Task RemoveRequestLink(RequestLink link)
     {
+        await StoreService.DeleteDirectory(link.LinkId.ToString(), true);
         DbContext.RequestLinks.Remove(link);
         await DbContext.SaveChangesAsync();
         await ReloadData();
@@ -207,6 +208,7 @@
 
     private async Task RemoveUploadLink(UploadLink link)
     {
+        await StoreService.DeleteDirectory(link.LinkId.ToString());
         DbContext.UploadLinks.Remove(link);
         await DbContext.SaveChangesAsync();
         await ReloadData();
@@ -214,6 +216,7 @@
 
     private async Task RemoveUploadSlot(RequestLink parentLink, RequestLinkUploadSlot slot)
     {
+        await StoreService.DeleteDirectory($"{parentLink.LinkId}/{slot.RequestLinkUploadSlotId}");
         parentLink.UploadSlots.Remove(slot);
         await DbContext.SaveChangesAsync();
         await ReloadData();

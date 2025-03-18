@@ -7,13 +7,12 @@ using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
-public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<FileStoreService> logger)
+public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, ILogger<FileStoreService> logger)
     : IStoreService
 {
     private readonly string _basePath = options.Value.BasePath;
 
-    public async Task InsertFile(string fileName, string folder, Stream contents,
-        CancellationToken cancellationToken = default)
+    public async Task InsertFile(string fileName, string folder, Stream contents)
     {
         var fullPath = Path.Combine(_basePath, folder, fileName);
         logger.LogInformation("Uploading file: {}", fileName);
@@ -23,7 +22,7 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         var transferDone = false;
         try
         {
-            await contents.CopyToAsync(file, cancellationToken);
+            await contents.CopyToAsync(file);
             transferDone = true;
         }
         catch (OperationCanceledException)
@@ -44,13 +43,6 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
 
         Directory.CreateDirectory(fullPath);
         return Task.CompletedTask;
-    }
-
-    public Task<bool> DirectoryExists(string name)
-    {
-        var fullPath = _basePath + name;
-
-        return Task.FromResult(Directory.Exists(fullPath));
     }
 
     public Task<Stream> GetFile(string name)
@@ -75,29 +67,6 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
         return Task.CompletedTask;
     }
 
-    public Task DeleteDirectoryContents(string path)
-    {
-        var fullPath = _basePath + path;
-
-        foreach (var file in Directory.GetFiles(fullPath))
-            File.Delete(file);
-
-        foreach (var directory in Directory.GetDirectories(fullPath))
-            Directory.Delete(directory, true);
-
-        return Task.CompletedTask;
-    }
-
-    public Task Move(string source, string dest)
-    {
-        var fullSource = _basePath + source;
-        var fullDest = _basePath + source;
-
-        File.Move(fullSource, fullDest);
-
-        return Task.CompletedTask;
-    }
-
     public Task<FileInfo[]?> ListFolder(string path)
     {
         var fullPath = _basePath + path;
@@ -108,13 +77,5 @@ public class FileStoreService(IOptions<FileStoreConfiguration> options, ILogger<
 
         var found = directory.GetFileSystemInfos().MapToFileInfos(_basePath);
         return Task.FromResult<FileInfo[]?>(found);
-    }
-
-    public Task<FileInfo[]> Search(string name)
-    {
-        var directory = new DirectoryInfo(_basePath);
-        var found = directory.GetFileSystemInfos(name, SearchOption.AllDirectories).MapToFileInfos(_basePath);
-
-        return Task.FromResult(found);
     }
 }
