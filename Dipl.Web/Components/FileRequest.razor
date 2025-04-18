@@ -6,8 +6,6 @@
 @inject RequestLinksService RequestLinksService
 @inject UserAuthenticationService UserAuthenticationService
 
-
-
 @if (!_closed)
 {
     <Validations @ref="_validations" ValidateOnLoad="false">
@@ -48,16 +46,56 @@
         </Field>
 
         <Fields>
-            <Field ColumnSize="ColumnSize.Is6">
-                <Check @bind-Checked="@_createModel.NotifyOnUpload">
-                    Notify me when files are uploaded
-                </Check>
+            <Field ColumnSize="ColumnSize.Is4.OnDesktop.Is12.OnMobile">
+                <FieldLabel>File size limit</FieldLabel>
+                <Addons>
+                    <Addon AddonType="AddonType.Body">
+                        <NumericEdit Placeholder="Unlimited" @bind-Value="@_createModel.SizeLimitPremultiplied"/>
+                    </Addon>
+                    <Addon AddonType="AddonType.End">
+                        <Select Style="max-width: max-content;" @bind-SelectedValue="_createModel.SizeLimitMultiplier"
+                                TValue="long">
+                            <SelectItem Value="1">B</SelectItem>
+                            <SelectItem Value="1024">KB</SelectItem>
+                            <SelectItem Value="1048576">MB</SelectItem>
+                            <SelectItem Value="1073741824">GB</SelectItem>
+                            <SelectItem Value="1099511627776">TB</SelectItem>
+                        </Select>
+                    </Addon>
+
+                </Addons>
             </Field>
 
-            <Field ColumnSize="ColumnSize.Is6">
-                <Check @bind-Checked="@_createModel.IsProtected">
-                    Validate email before upload
-                </Check>
+            <Validation Validator="IsValidExtensionList">
+                <Field ColumnSize="ColumnSize.Is4.OnDesktop.Is12.OnMobile">
+                    <Field>
+                        <FieldLabel>
+                            Allowed file extensions
+                        </FieldLabel>
+                        <TextEdit TextChanged="SetAllowedExtensions" Placeholder=".pdf, .docx...">
+                            <Feedback>
+                                <ValidationError/>
+                            </Feedback>
+                        </TextEdit>
+                    </Field>
+                </Field>
+            </Validation>
+
+            <Field Margin="Margin.Is4.FromEnd" ColumnSize="ColumnSize.IsAuto.OnDesktop.Is12.OnMobile">
+                <Field Horizontal>
+                    <FieldBody>
+                        <Check @bind-Checked="@_createModel.NotifyOnUpload">
+                            Notify me when files are uploaded
+                        </Check>
+                    </FieldBody>
+                </Field>
+                <Field Horizontal>
+                    <FieldBody>
+                        <Check @bind-Checked="@_createModel.IsProtected">
+                            Validate email before upload
+                        </Check>
+                    </FieldBody>
+                </Field>
             </Field>
         </Fields>
         <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Create Link</Button>
@@ -101,6 +139,29 @@ else
     {
         _closed = false;
         _createModel = new RequestLinkCreateModel();
+    }
+
+    private static void IsValidExtensionList(ValidatorEventArgs e)
+    {
+        var value = Convert.ToString(e.Value);
+        var split = value?.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+        if (value?.Length > 100)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "The list of extensions is too long";
+        }
+        else if (split is not null && split.Any(entry => entry.Count(x => x == '.') != 1))
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "Specify extensions in format .pdf, .docx, .txt";
+        }
+    }
+
+    private void SetAllowedExtensions(string value)
+    {
+        var split = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        _createModel.AllowedExtensions = split;
     }
 
 }

@@ -7,4 +7,7 @@ public class RequestLinkCreateModel
     public List<string> SendTo { get; set; } = [];
     public bool NotifyOnUpload { get; set; }
     public bool IsProtected { get; set; }
+    public long? SizeLimitPremultiplied { get; set; }
+    public long SizeLimitMultiplier { get; set; } = 1048576; // MB
+    public string[] AllowedExtensions { get; set; } = [];
 }

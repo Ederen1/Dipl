@@ -1,4 +1,5 @@
 @using Dipl.Business.EmailModels
+@using Dipl.Common.Util
 @inject NavigationManager NavigationManager
 <!DOCTYPE html>
 <html lang="en">
@@ -120,6 +121,20 @@
             </a>
         </div>
 
+        @if (Model.CreateModel.SizeLimitPremultiplied is {} sizeLimit)
+        {
+            <div class="notify-info">
+                Size limit for all files is @FileUtils.BytesToString(sizeLimit * Model.CreateModel.SizeLimitMultiplier)
+            </div>
+        }
+        
+        @if (Model.CreateModel.AllowedExtensions.Length > 0)
+        {
+            <div class="notify-info">
+                Allowed file types: @string.Join(", ", Model.CreateModel.AllowedExtensions)
+            </div>
+        }
+        
         @if (Model.CreateModel.NotifyOnUpload)
         {
             <div class="notify-info">

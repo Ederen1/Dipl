@@ -21,11 +21,15 @@ public class RequestLinksService(
             LinkTitle = createModel.LinkName,
             Message = createModel.MessageForUser,
             NotifyOnUpload = createModel.NotifyOnUpload,
+            IsProtected = createModel.IsProtected,
+            AllFilesSizeLimit = createModel.SizeLimitPremultiplied is { } premultiplied
+                ? premultiplied * createModel.SizeLimitMultiplier
+                : long.MaxValue,
+            AllowedExtensions = createModel.AllowedExtensions,
             UploadSlots = createModel.SendTo.Select(sendto => new RequestLinkUploadSlot
             {
                 RequestLinkUploadSlotId = Guid.NewGuid(),
                 Email = sendto,
-                IsProtected = createModel.IsProtected
             }).ToList()
         };
 

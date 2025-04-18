@@ -9,10 +9,15 @@
         <div class="w-100 d-flex justify-content-center lowest">
             <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
         </div>
+        
+        <div class="w-100 d-flex justify-content-center lowest">
+            <Span TextColor="TextColor.Muted">File types limited to: @string.Join(", ", Accept)</Span>
+        </div>
+        
 
         <div class="d-flex gap-2 justify-content-center mx-auto">
             <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
-            </Button>
+            </Button> 
             <Button Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add
                 folder
             </Button>
@@ -65,7 +70,7 @@
         </Card>
     }
 
-    <FileEdit @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple Directory="_pickingDirectory"/>
+    <FileEdit Filter="@string.Join(',', Accept)" @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple Directory="_pickingDirectory"/>
 </div>
 
 @code {
@@ -85,9 +90,12 @@
     [Parameter]
     public bool Disabled { get; set; }
 
+    [Parameter]
+    public string[] Accept { get; set; } = [];
+
     private FileEdit _fileEdit = null!;
     private string _disabledClass = "";
-    private Dictionary<IFileEntry, int> _progress = [];
+    private readonly Dictionary<IFileEntry, int> _progress = [];
 
     private bool _pickingDirectory = true;
 
@@ -135,11 +143,18 @@
             if (idx != -1)
                 Value[idx] = file;
             else
+            {
+                var inDelete = DeleteOnlyValue.FirstOrDefault(x => x.Name == file.Name);
+                if(inDelete is not null)
+                    DeleteOnlyValue.Remove(inDelete);
+                
                 append.Add(file);
+            }
         }
 
         Value.AddRange(append);
         await ValueChanged.InvokeAsync(Value);
+        await DeleteOnlyValueChanged.InvokeAsync(DeleteOnlyValue);
     }
 
     private void Written(FileWrittenEventArgs e)

@@ -12,6 +12,9 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<RequestLink>().Property(e => e.AllowedExtensions).HasConversion(a => string.Join(',', a),
+            b => b.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
         InitializeData(modelBuilder);
         base.OnModelCreating(modelBuilder);
     }

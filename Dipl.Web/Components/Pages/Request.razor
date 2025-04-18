@@ -7,6 +7,7 @@
 @using Dipl.Common.Types
 @using Dipl.Common.Util
 @using Dipl.Web.Services
+@using Microsoft.EntityFrameworkCore
 
 @inject FileManagerService FileManagerService
 @inject AppDbContext DbContext
@@ -16,7 +17,7 @@
 
 
 <Container>
-    @if (!_userConfirmed && Slot.IsProtected)
+    @if (!_userConfirmed && Slot.RequestLink.IsProtected)
     {
         <Validations @ref="_emailValidations" ValidateOnLoad="false" Mode="ValidationMode.Manual">
             <Field ColumnSize="ColumnSize.Is6">
@@ -54,14 +55,23 @@
                     </FieldBody>
                 </Field>
 
-                <Field>
-                    <FieldLabel>Upload files here</FieldLabel>
-                    <FieldBody>
-                        <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload"
-                                                        @bind-DeleteOnlyValue="_alreadyPresentFiles"
-                                                        Disabled="_closed"/>
-                    </FieldBody>
-                </Field>
+                <Validation Validator="FileSizeAndExtensionValidator">
+                    <Field>
+                        <FieldLabel>Upload files here</FieldLabel>
+                        <FieldBody Border="Border.Is1.Danger">
+                            <Dipl.Web.Components.FilePicker Accept="Slot.RequestLink.AllowedExtensions"
+                                                            Value="_filesToUpload"
+                                                            ValueChanged="async (value) => { _filesToUpload = value; await Revalidate();}"
+                                                            @bind-DeleteOnlyValue="_alreadyPresentFiles"
+                                                            Disabled="_closed">
+                            </Dipl.Web.Components.FilePicker>
+                        </FieldBody>
+                        @if (filePickerValidations?.Status == ValidationStatus.Error)
+                        {
+                            <Span TextColor="TextColor.Danger">@filePickerValidations.ErrorText</Span>
+                        }
+                    </Field>
+                </Validation>
 
                 @if (_closed && _canReopen)
                 {
@@ -100,14 +110,15 @@
     private RequestLinkUploadSlot Slot { get; set; } = null!;
 
     private bool _userConfirmed;
+    private ValidatorEventArgs filePickerValidations;
 
     protected override async Task OnParametersSetAsync()
     {
-        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId) ?? throw new Exception("Unable to find slot");
+        Slot = await DbContext.RequestLinkUploadSlots.Include(x => x.RequestLink).ThenInclude(x => x.CreatedBy).FirstOrDefaultAsync(x => x.RequestLinkUploadSlotId == SlotId) ?? throw new Exception("Unable to find slot");
 
         // Check if the user responding to a request is logged in, then allow the access
         var currentUser = await UserAuthentication.GetUserInfo();
-        if (!Slot.IsProtected || currentUser?.Email == Slot.Email)
+        if (!Slot.RequestLink.IsProtected || currentUser?.Email == Slot.Email)
         {
             _userConfirmed = true;
             await LoadFilesAndLogic();
@@ -163,6 +174,41 @@
 
         _userConfirmed = true;
         await LoadFilesAndLogic();
+    }
+
+    private void FileSizeAndExtensionValidator(ValidatorEventArgs e)
+    {
+        if (_filesToUpload.Count == 0 && _alreadyPresentFiles.Count == 0)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "No files to upload";
+            filePickerValidations = e;
+            return;
+        }
+        
+        var extensionsInvalid = _filesToUpload.Any(x => !Slot.RequestLink.AllowedExtensions.Any(ex => x.Name.EndsWith(ex)));
+        if (Slot.RequestLink.AllowedExtensions.Length >  0 && extensionsInvalid)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "Some files have disallowed extensions. Please remove them";
+            filePickerValidations = e;
+            return;
+        }
+
+        var allFileSizes = _filesToUpload.Select(x => x.Size).Concat(_alreadyPresentFiles.Select(x => x.Size));
+        var sum = allFileSizes.Sum();
+        if (sum > Slot.RequestLink.AllFilesSizeLimit)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = $"You are {FileUtils.BytesToString(sum - Slot.RequestLink.AllFilesSizeLimit)} over the limit for capacity";
+        }
+
+        filePickerValidations = e;
+    }
+
+    private async Task Revalidate()
+    {
+        await _validations.ValidateAll();
     }
 
 }
