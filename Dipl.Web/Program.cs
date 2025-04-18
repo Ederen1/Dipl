@@ -25,7 +25,7 @@ builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailS
 builder.Services.Configure<FileStoreServiceConfiguration>(configuration.GetSection("FileStoreConfiguration:FileStoreService"));
 builder.Services.Configure<FTPFileStoreServiceConfiguration>(configuration.GetSection("FileStoreConfiguration:FtpStoreService"));
 
-if(configuration.GetSection("FileStoreConfiguration:FileStoreService").Value is not null)
+if(configuration.GetSection("FileStoreConfiguration:FileStoreService").Exists())
 {
     builder.Services.AddScoped<IStoreService, FileStoreService>();
 }
@@ -100,9 +100,9 @@ app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
-    db.EnsureDeleted();
-    db.EnsureCreated();
-    // await db.MigrateAsync();
+    // db.EnsureDeleted();
+    // db.EnsureCreated();
+    // // await db.MigrateAsync();
 }
 
 app.MapLoginEndpoints();

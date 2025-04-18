@@ -94,11 +94,12 @@
             display: inline-block;
             text-decoration: none;
             background: #0061FF;
-            color: #fff;
+            color: #fff !important;
             padding: 12px 32px;
             border-radius: 24px;
             font-weight: 500;
             font-size: 15px;
+            cursor: pointer;
         }
 
         .message {
@@ -107,7 +108,7 @@
         }
 
         .button:visited {
-            color: #fff;
+            color: #fff !important;
         }
 
         .button:hover {
@@ -151,12 +152,8 @@
         </div>
 
         <div class="button-container">
-            <a class="button" style="color: #FFFFFF; text-decoration: none"
-               href="@($"{NavigationManager.BaseUri}link/{Model.Link.LinkId}/{Model.UploadSlot.RequestLinkUploadSlotId}")">
-                <span style="color: #FFFFFF; text-decoration: none">
-                    <font color="#FFFFFF">Get your files</font>
-                </span>
-            </a>
+            <a class="button"
+               href="@($"{NavigationManager.BaseUri}link/{Model.Link.LinkId}/{Model.UploadSlot.RequestLinkUploadSlotId}")">Get your files</a>
         </div>
     </div>
 </div>

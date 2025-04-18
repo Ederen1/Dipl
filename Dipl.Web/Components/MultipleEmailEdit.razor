@@ -51,6 +51,11 @@
         if (args.Key != "Enter")
             return;
 
+        await ValidateSetEmail();
+    }
+
+    private async Task ValidateSetEmail()
+    {
         var email = _currentEmail.ParseAsEmail();
         if (email == null)
         {
@@ -58,28 +63,26 @@
             return;
         }
 
-        await SetEmail(email);
-    }
+        if (!Value.Contains(email))
+        {
+            Value.Add(email);
+            await ValueChanged.InvokeAsync(Value);
+        }
 
-    private async Task SetEmail(string email)
-    {
-        Value.Add(email);
-        await ValueChanged.InvokeAsync(Value);
         _editStyle = ValidStyle;
         _currentEmail = "";
     }
 
     private async Task FocusLost()
     {
-        var email = _currentEmail.ParseAsEmail();
-        if (email == null)
+        if (string.IsNullOrWhiteSpace(_currentEmail))
         {
-            _currentEmail = "";
             _editStyle = ValidStyle;
+            _currentEmail = "";
             return;
         }
 
-        await SetEmail(email);
+        await ValidateSetEmail();
     }
 
 }

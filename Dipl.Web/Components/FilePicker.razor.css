@@ -24,6 +24,7 @@
 
 .picker.dragover:not(.disabled) {
     background: rgb(230, 241, 255);
+    border-color: rgb(157, 201, 255);
 }
 
 ::deep .form-file {

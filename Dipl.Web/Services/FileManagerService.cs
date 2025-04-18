@@ -52,7 +52,7 @@ public class FileManagerService(
         var link = slot.RequestLink;
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
-        await UploadFiles(filesToUpload, alreadyPresentFiles, dir, cancellationToken);
+        var files = await UploadFiles(filesToUpload, alreadyPresentFiles, dir, cancellationToken);
         slot.Uploaded = DateTime.Now;
 
         if (link.NotifyOnUpload)
@@ -64,10 +64,10 @@ public class FileManagerService(
                 Link = link,
                 UploadSlot = slot,
                 EmailTo = link.CreatedBy.Email,
-                Files = filesToUpload.Select(x => new FileInfoModel
+                Files = files.Select(file => new FileInfoModel
                 {
-                    Name = x.Name,
-                    Size = x.Size
+                    Name = file.Name,
+                    Size = file.Size,
                 }).ToArray()
             };
 
@@ -82,36 +82,23 @@ public class FileManagerService(
         return folderContents.ToList();
     }
 
-    private async Task UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles, string folder,
-        CancellationToken cancellationToken)
+    private async Task<List<FileInfo>> UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles,
+        string folder, CancellationToken cancellationToken)
     {
         var existingFiles = await storeService.ListFolder(folder);
-        var (keepUpload, toDelete) = DiffFiles(files, alreadyPresentFiles, existingFiles);
+        var toDelete = existingFiles?.Where(f => alreadyPresentFiles.All(apf => apf.Name != f.Name)).ToList() ?? [];
 
         foreach (var file in toDelete)
             await storeService.DeleteFile(file.Name, folder);
 
-        foreach (var chunkedFiles in keepUpload.Chunk(UploadChunkSize))
+        foreach (var chunkedFiles in files.Chunk(UploadChunkSize))
         {
             var tasks = chunkedFiles.Select(file => storeService.InsertFile(file.Name, folder,
                 file.OpenReadStream(long.MaxValue, cancellationToken)));
 
             await Task.WhenAll(tasks);
         }
-    }
 
-    private (IEnumerable<IFileEntry> keepUpload, IEnumerable<FileInfo> toDelete) DiffFiles(List<IFileEntry> files,
-        List<FileInfo> alreadyPresentFiles, FileInfo[]? existingFiles)
-    {
-        if (existingFiles is null)
-        {
-            if (alreadyPresentFiles.Count != 0)
-                throw new Exception("Logic error");
-
-            return (files, []);
-        }
-
-        var toRemove = existingFiles.Where(f => alreadyPresentFiles.All(apf => apf.Name != f.Name));
-        return (files, toRemove);
+        return (await storeService.ListFolder(folder))?.ToList() ?? [];
     }
 }

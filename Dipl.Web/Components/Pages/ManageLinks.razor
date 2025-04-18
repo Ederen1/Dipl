@@ -138,20 +138,22 @@
                     </TableRowCell>
                     <TableRowCell>@uploadLink.Created</TableRowCell>
                     <TableRowCell>@uploadLink.Uploaded</TableRowCell>
-                    <TableRowCell Display="Display.Flex" Gap="Gap.Is2">
-                        <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
-                                To="@("/link/" + uploadLink.LinkId)">
-                            Show files
-                        </Button>
-                        <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
-                                To="@($"/download/fromUpload/{uploadLink.LinkId}")"
-                                Download="@(FileUtils.SanitizePath(uploadLink.LinkTitle) + ".zip")">
-                            Download .zip
-                        </Button>
-                        <Button Color="Color.Danger" Size="Size.Small"
-                                Clicked="@(() => RemoveUploadLink(uploadLink))">
-                            Remove
-                        </Button>
+                    <TableRowCell>
+                        <Div Display="Display.Flex" Gap="Gap.Is2">
+                            <Button Type="ButtonType.Link" Color="Color.Primary" Size="Size.Small"
+                                    To="@("/link/" + uploadLink.LinkId)">
+                                Show files
+                            </Button>
+                            <Button Type="ButtonType.Link" Color="Color.Success" Size="Size.Small"
+                                    To="@($"/download/fromUpload/{uploadLink.LinkId}")"
+                                    Download="@(FileUtils.SanitizePath(uploadLink.LinkTitle) + ".zip")">
+                                Download .zip
+                            </Button>
+                            <Button Color="Color.Danger" Size="Size.Small"
+                                    Clicked="@(() => RemoveUploadLink(uploadLink))">
+                                Remove
+                            </Button>
+                        </Div>
                     </TableRowCell>
                 </TableRow>
             }
@@ -208,7 +210,7 @@
 
     private async Task RemoveUploadLink(UploadLink link)
     {
-        await StoreService.DeleteDirectory(link.LinkId.ToString());
+        await StoreService.DeleteDirectory(link.LinkId.ToString(), true);
         DbContext.UploadLinks.Remove(link);
         await DbContext.SaveChangesAsync();
         await ReloadData();
@@ -216,7 +218,7 @@
 
     private async Task RemoveUploadSlot(RequestLink parentLink, RequestLinkUploadSlot slot)
     {
-        await StoreService.DeleteDirectory($"{parentLink.LinkId}/{slot.RequestLinkUploadSlotId}");
+        await StoreService.DeleteDirectory($"{parentLink.LinkId}/{slot.RequestLinkUploadSlotId}", true);
         parentLink.UploadSlots.Remove(slot);
         await DbContext.SaveChangesAsync();
         await ReloadData();
