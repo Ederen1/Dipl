@@ -6,4 +6,5 @@ public class RequestLinkCreateModel
     public string MessageForUser { get; set; } = "";
     public List<string> SendTo { get; set; } = [];
     public bool NotifyOnUpload { get; set; }
+    public bool IsProtected { get; set; }
 }

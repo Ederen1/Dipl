@@ -47,12 +47,19 @@
             </FieldBody>
         </Field>
 
-        <Field>
-            <Check @bind-Checked="@_createModel.NotifyOnUpload">
-                Notify me when files are uploaded
-            </Check>
-        </Field>
+        <Fields>
+            <Field ColumnSize="ColumnSize.Is6">
+                <Check @bind-Checked="@_createModel.NotifyOnUpload">
+                    Notify me when files are uploaded
+                </Check>
+            </Field>
 
+            <Field ColumnSize="ColumnSize.Is6">
+                <Check @bind-Checked="@_createModel.IsProtected">
+                    Validate email before upload
+                </Check>
+            </Field>
+        </Fields>
         <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Create Link</Button>
     </Validations>
 }

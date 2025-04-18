@@ -1,72 +1,85 @@
 @page "/link/{linkId:guid}/{slotId:guid?}"
 @using Dipl.Business
+@using Dipl.Business.Services
 @using Dipl.Business.Services.Interfaces
 @using Dipl.Common.Types
 @using Dipl.Common.Util
+@using Microsoft.EntityFrameworkCore
 
 @inject IStoreService StoreService
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
+@inject UserAuthenticationService UserAuthentication
 
 <Container>
-    @{ var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId + "/" + SlotId.Value; }
-    <Row Margin="Margin.Is2.OnY">
-        <Column ColumnSize="ColumnSize.IsAuto">
-            @if (Files.Length == 1)
+    @if (!IsTheRightUser)
+    {
+        <Div>You do not have the permission to view these files</Div>
+    }
+    else
+    {
+        var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId + "/" + SlotId.Value;
+        <Row Margin="Margin.Is2.OnY">
+            <Column ColumnSize="ColumnSize.IsAuto">
+                @if (Files.Length == 1)
+                {
+                    <Button Type="ButtonType.Link" Color="Color.Primary"
+                            To="@($"/download/{linkWithId}/{Files[0].Name}")"
+                            Download="@Files[0].Name">
+                        <Icon Name="IconName.Download" Class="me-2"/>
+                        Download file
+                    </Button>
+                }
+                else if (Files.Length > 1)
+                {
+                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
+                        <Icon Name="IconName.Download" Class="me-2"/>
+                        Download all files
+                    </Button>
+                }
+            </Column>
+            @if (SlotId is null)
             {
-                <Button Type="ButtonType.Link" Color="Color.Primary"
-                        To="@($"/download/{linkWithId}/{Files[0].Name}")"
-                        Download="@Files[0].Name">
-                    <Icon Name="IconName.Download" Class="me-2"/>
-                    Download file
-                </Button>
+                <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
+                    Copy link:
+                </Column>
+                <Column>
+                    <Div Class="input-group">
+                        <TextEdit Disabled="true" Text="@NavigationManager.Uri"></TextEdit>
+                        <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
+                    </Div>
+                </Column>
             }
-            else if (Files.Length > 1)
-            {
-                <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
-                    <Icon Name="IconName.Download" Class="me-2"/>
-                    Download all files
-                </Button>
-            }
-        </Column>
-        <Column Padding="Padding.Is0.FromEnd" ColumnSize="ColumnSize.IsAuto" Class="align-self-center">
-            Copy link:
-        </Column>
-        <Column>
-            <Div Class="input-group">
-                <TextEdit Disabled="true" Text="@NavigationManager.Uri"></TextEdit>
-                <Button Color="Color.Secondary" Clicked="CopyToClipboard">Copy</Button>
-            </Div>
-        </Column>
-    </Row>
+        </Row>
 
-    <Table Striped>
-        <TableHeader>
-            <TableRow>
-                <TableHeaderCell>Name</TableHeaderCell>
-                <TableHeaderCell>Size</TableHeaderCell>
-                <TableHeaderCell Width="Width.Auto">Download</TableHeaderCell>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            @foreach (var file in Files)
-            {
+        <Table Striped>
+            <TableHeader>
                 <TableRow>
-                    <TableRowCell>@file.Name</TableRowCell>
-                    <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
-                    <TableRowCell Style="width: 0;" Class="text-nowrap">
-                        <Button Type="ButtonType.Link" Color="Color.Primary"
-                                To="@($"/download/{linkWithId}/{file.Name}")"
-                                Download="@file.Name">
-                            <Icon Name="IconName.Download" Class="me-2"/>
-                            Download
-                        </Button>
-                    </TableRowCell>
+                    <TableHeaderCell>Name</TableHeaderCell>
+                    <TableHeaderCell>Size</TableHeaderCell>
+                    <TableHeaderCell Width="Width.Auto">Download</TableHeaderCell>
                 </TableRow>
-            }
-        </TableBody>
-    </Table>
+            </TableHeader>
+            <TableBody>
+                @foreach (var file in Files)
+                {
+                    <TableRow>
+                        <TableRowCell>@file.Name</TableRowCell>
+                        <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
+                        <TableRowCell Style="width: 0;" Class="text-nowrap">
+                            <Button Type="ButtonType.Link" Color="Color.Primary"
+                                    To="@($"/download/{linkWithId}/{file.Name}")"
+                                    Download="@file.Name">
+                                <Icon Name="IconName.Download" Class="me-2"/>
+                                Download
+                            </Button>
+                        </TableRowCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    }
 </Container>
 
 @code {
@@ -78,13 +91,26 @@
     public Guid? SlotId { get; set; }
 
     private FileInfo[] Files { get; set; } = [];
+    private bool IsTheRightUser { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        var linkExists = SlotId is not null ? DbContext.RequestLinkUploadSlots.Any(x => x.RequestLinkUploadSlotId == SlotId.Value) : DbContext.UploadLinks.Any(x => x.LinkId == LinkId);
+        if (SlotId is not null)
+        {
+            var slot = DbContext.RequestLinkUploadSlots.FirstOrDefault(x => x.RequestLinkUploadSlotId == SlotId.Value);
+            if (slot is null)
+                throw new Exception("Link not found");
 
-        if (!linkExists)
-            throw new Exception("Link not found");
+            var currentUser = await UserAuthentication.GetUserInfo();
+            IsTheRightUser = currentUser?.UserId == slot.RequestLink.CreatedById;
+        }
+        else
+        {
+            if (!DbContext.UploadLinks.Any(x => x.LinkId == LinkId))
+                throw new Exception("Link not found");
+
+            IsTheRightUser = true;
+        }
 
         Files = await StoreService.ListFolder($"{LinkId}/{SlotId}") ?? [];
     }

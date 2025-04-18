@@ -1,56 +1,83 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
+@using System.ComponentModel.DataAnnotations
 @using Dipl.Business
 @using Dipl.Business.Entities
+@using Dipl.Business.Services
 @using Dipl.Business.Services.Interfaces
 @using Dipl.Common.Types
+@using Dipl.Common.Util
 @using Dipl.Web.Services
 
 @inject FileManagerService FileManagerService
 @inject AppDbContext DbContext
 @inject IConfiguration Configuration
 @inject IStoreService StoreService
+@inject UserAuthenticationService UserAuthentication
 
 
 <Container>
-    @if (_closed && !_canViewAfterClose)
+    @if (!_userConfirmed && Slot.IsProtected)
     {
-        <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
-            Files successfully uploaded!
-        </Div>
+        <Validations @ref="_emailValidations" ValidateOnLoad="false" Mode="ValidationMode.Manual">
+            <Field ColumnSize="ColumnSize.Is6">
+                <Validation Validator="ValidateMatchingEmail">
+                    <FieldLabel>Please enter email address this hyperlink was sent to</FieldLabel>
+                    <TextEdit Role="TextRole.Email" Placeholder="Email...">
+                        <Feedback>
+                            <ValidationError/>
+                        </Feedback>
+                    </TextEdit>
+                </Validation>
+            </Field>
+
+            <Field ColumnSize="ColumnSize.Is2">
+                <Button Type="ButtonType.Submit" Clicked="SubmitEmail" Color="Color.Primary">Submit</Button>
+            </Field>
+        </Validations>
     }
     else
     {
-        <Validations @ref="_validations" ValidateOnLoad="false">
-            <Field>
-                <FieldLabel>Message for user</FieldLabel>
-                <FieldBody>
-                    <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
-                              Disabled="_disableEdit"></MemoEdit>
-                </FieldBody>
-            </Field>
+        @if (_closed && !_canViewAfterClose)
+        {
+            <Div Margin="Margin.IsAuto.FromStart.IsAuto.FromEnd">
+                Files successfully uploaded!
+            </Div>
+        }
+        else
+        {
+            <Validations @ref="_validations" ValidateOnLoad="false">
+                <Field>
+                    <FieldLabel>Message for user</FieldLabel>
+                    <FieldBody>
+                        <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
+                                  Disabled="_closed"></MemoEdit>
+                    </FieldBody>
+                </Field>
 
-            <Field>
-                <FieldLabel>Upload files here</FieldLabel>
-                <FieldBody>
-                    <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload"
-                                                    @bind-DeleteOnlyValue="_alreadyPresentFiles"
-                                                    Disabled="_disableEdit"/>
-                </FieldBody>
-            </Field>
+                <Field>
+                    <FieldLabel>Upload files here</FieldLabel>
+                    <FieldBody>
+                        <Dipl.Web.Components.FilePicker @bind-Value="_filesToUpload"
+                                                        @bind-DeleteOnlyValue="_alreadyPresentFiles"
+                                                        Disabled="_closed"/>
+                    </FieldBody>
+                </Field>
 
-            @if (_closed && _canReopen)
-            {
-                <Button Width="Width.Is100" Color="Color.Success"
-                        Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
-                </Button>
-            }
-            else if (!_closed)
-            {
-                <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
-                </Button>
-            }
-        </Validations>
+                @if (_closed && _canReopen)
+                {
+                    <Button Width="Width.Is100" Color="Color.Success"
+                            Clicked="() => { _closed = false; }">Reopen
+                    </Button>
+                }
+                else if (!_closed)
+                {
+                    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
+                    </Button>
+                }
+            </Validations>
+        }
     }
+
 
 </Container>
 
@@ -63,25 +90,57 @@
     public Guid SlotId { get; set; }
 
     private Validations _validations = null!;
+    private Validations _emailValidations = null!;
     private bool _closed;
     private bool _canReopen;
     private bool _canViewAfterClose;
-    private bool _disableEdit;
     private List<IFileEntry> _filesToUpload = [];
     private List<FileInfo> _alreadyPresentFiles = [];
 
     private RequestLinkUploadSlot Slot { get; set; } = null!;
 
+    private bool _userConfirmed;
+
     protected override async Task OnParametersSetAsync()
+    {
+        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId) ?? throw new Exception("Unable to find slot");
+
+        // Check if the user responding to a request is logged in, then allow the access
+        var currentUser = await UserAuthentication.GetUserInfo();
+        if (!Slot.IsProtected || currentUser?.Email == Slot.Email)
+        {
+            _userConfirmed = true;
+            await LoadFilesAndLogic();
+        }
+    }
+
+    private void ValidateMatchingEmail(ValidatorEventArgs e)
+    {
+        var possibleEmail = Convert.ToString(e.Value);
+        var parsedEmail = possibleEmail?.ParseAsEmail();
+        if (parsedEmail is null)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "Invalid email.";
+            return;
+        }
+
+        if (Slot.Email.Trim() != parsedEmail)
+        {
+            e.Status = ValidationStatus.Error;
+            e.ErrorText = "Email does not match the one this link was sent to";
+            return;
+        }
+
+        e.Status = ValidationStatus.Success;
+    }
+
+    private async Task LoadFilesAndLogic()
     {
         _canViewAfterClose = Configuration.GetValue<bool>("ClosedLinkCanView");
         _canReopen = Configuration.GetValue<bool>("ClosedLinkCanReopen");
-        Slot = await DbContext.RequestLinkUploadSlots.FindAsync(SlotId) ?? throw new Exception("Unable to find slot");
         _closed = Slot.Uploaded != null;
-        if (_closed)
-            _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
-
-        _disableEdit = _closed;
+        _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
     }
 
     private async Task Submit()
@@ -92,10 +151,18 @@
         if (_alreadyPresentFiles.Count == 0 && _filesToUpload.Count == 0)
             return;
 
-        _disableEdit = true;
         _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles);
         _filesToUpload.Clear();
         _closed = true;
+    }
+
+    private async Task SubmitEmail()
+    {
+        if (!await _emailValidations.ValidateAll())
+            return;
+
+        _userConfirmed = true;
+        await LoadFilesAndLogic();
     }
 
 }

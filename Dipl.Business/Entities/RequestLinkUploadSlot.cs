@@ -15,5 +15,6 @@ public class RequestLinkUploadSlot
     public DateTime? Uploaded { get; set; }
 
     public Guid RequestLinkId { get; set; }
+    public bool IsProtected { get; set; }
     public virtual RequestLink RequestLink { get; set; } = null!;
 }

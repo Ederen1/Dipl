@@ -93,8 +93,6 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// app.UseDomainWhitelist();
-
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 using (var scope = app.Services.CreateScope())
@@ -102,7 +100,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetService<AppDbContext>()!.Database;
     // db.EnsureDeleted();
     // db.EnsureCreated();
-    // // await db.MigrateAsync();
+    // await db.MigrateAsync();
 }
 
 app.MapLoginEndpoints();
