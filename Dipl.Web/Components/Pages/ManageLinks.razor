@@ -14,13 +14,15 @@
 @inject IStoreService StoreService
 
 <Container>
-    <h3>Request links</h3>
+    <h3 class="mb-3">Request links</h3>
     <Table Responsive="true" Striped="true" Hoverable="true">
         <TableHeader>
             <TableRow>
                 <TableHeaderCell>Title</TableHeaderCell>
                 <TableHeaderCell>Message</TableHeaderCell>
                 <TableHeaderCell>Created</TableHeaderCell>
+                <TableHeaderCell>Size limit</TableHeaderCell>
+                <TableHeaderCell>Allowed extensions</TableHeaderCell>
                 <TableHeaderCell>Notify On Upload</TableHeaderCell>
                 <TableHeaderCell Width="Width.Px(200)">Actions</TableHeaderCell>
             </TableRow>
@@ -34,6 +36,8 @@
                     </TableRowCell>
                     <TableRowCell>@requestLink.Message</TableRowCell>
                     <TableRowCell>@requestLink.Created</TableRowCell>
+                    <TableRowCell>@FileUtils.BytesToString(requestLink.AllFilesSizeLimit)</TableRowCell>
+                    <TableRowCell>@string.Join(", ", requestLink.AllowedExtensions)</TableRowCell>
                     <TableRowCell>@(requestLink.NotifyOnUpload ? "Yes" : "No")</TableRowCell>
                     <TableRowCell>
                         <ConfirmButton Color="Color.Danger" Size="Size.Small"
@@ -44,7 +48,7 @@
                 </TableRow>
                 <!-- Nested row for UploadSlots grouping -->
                 <TableRow>
-                    <TableRowCell colspan="5">
+                    <TableRowCell colspan="7">
                         @if (requestLink.UploadSlots.Any())
                         {
                             <Table Narrow Responsive="true" Striped="true" Hoverable="true" Class="mb-0">
@@ -105,7 +109,7 @@
             }
         </TableBody>
     </Table>
-    <h3 class="mt-4">Upload Links</h3>
+    <h3 class="my-3">Upload Links</h3>
     <Table Responsive="true" Striped="true" Hoverable="true">
         <TableHeader>
             <TableRow>
