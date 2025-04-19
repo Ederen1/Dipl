@@ -1,4 +1,4 @@
-<Div style="min-width: 140px">
+<Div Margin="Margin" Flex="Flex.InlineFlex.JustifyContent.End" Gap="Gap.Is2">
     @if (!_showConfirmation)
     {
         <Button @attributes="AdditionalAttributes"
@@ -12,7 +12,7 @@
     }
     else
     {
-        <Button Color="Color.Success"
+        <Button Color="Color"
                 Size="@Size"
                 Outline="@Outline"
                 @onclick="Confirm">
@@ -48,6 +48,9 @@
 
     [Parameter]
     public bool Disabled { get; set; }
+
+    [Parameter]
+    public IFluentSpacing Margin { get; set; } = null!;
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
