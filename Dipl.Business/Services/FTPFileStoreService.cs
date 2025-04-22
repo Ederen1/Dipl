@@ -8,8 +8,8 @@ namespace Dipl.Business.Services;
 
 public class FTPFileStoreService : IStoreService
 {
-    private AsyncFtpClient _client;
-    private string BasePath;
+    private readonly AsyncFtpClient _client;
+    private readonly string BasePath;
 
     public FTPFileStoreService(IOptions<FTPFileStoreServiceConfiguration> options)
     {
@@ -61,9 +61,7 @@ public class FTPFileStoreService : IStoreService
         return resp.Select(item => new FileInfo
         {
             Path = item.FullName,
-            Created = item.Created,
-            Size = item.Size,
-            IsFolder = item.Type == FtpObjectType.Directory,
+            Size = item.Size
         }).ToArray();
     }
 }

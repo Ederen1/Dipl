@@ -22,21 +22,19 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
 builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
-builder.Services.Configure<FileStoreServiceConfiguration>(configuration.GetSection("FileStoreConfiguration:FileStoreService"));
-builder.Services.Configure<FTPFileStoreServiceConfiguration>(configuration.GetSection("FileStoreConfiguration:FtpStoreService"));
+builder.Services.Configure<FileStoreServiceConfiguration>(
+    configuration.GetSection("FileStoreConfiguration:FileStoreService"));
+builder.Services.Configure<FTPFileStoreServiceConfiguration>(
+    configuration.GetSection("FileStoreConfiguration:FtpStoreService"));
 
-if(configuration.GetSection("FileStoreConfiguration:FileStoreService").Exists())
-{
+if (configuration.GetSection("FileStoreConfiguration:FileStoreService").Exists())
     builder.Services.AddScoped<IStoreService, FileStoreService>();
-}
 else
-{
     builder.Services.AddScoped<IStoreService, FTPFileStoreService>();
-}
 
 
-builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; }).AddMicrosoftAccount(
-    opt =>
+builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name = "AuthCookie"; })
+    .AddMicrosoftAccount(opt =>
     {
         opt.SignInScheme = "Cookies";
         opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
@@ -71,8 +69,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies();
     options.UseSqlite(configuration["ConnectionStrings:Db"]!);
-    options.EnableSensitiveDataLogging();
-    options.EnableDetailedErrors();
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
 });
 builder.Services.AddServiceLayer();
 builder.Services.AddWebServiceLayer();

@@ -1,5 +1,4 @@
 @page "/manageLinks"
-@using System.Linq
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
@@ -10,6 +9,8 @@
 @inject UsersService UsersService
 @inject AppDbContext DbContext
 @inject IStoreService StoreService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
 
 <Container>
     <h1 class="mb-4">Link Management</h1>
@@ -17,10 +18,10 @@
     <Tabs SelectedTab="@selectedTab" SelectedTabChanged="@OnSelectedTabChanged">
         <Items>
             <Tab Name="requestLinks">
-                <span><Icon Name="IconName.UserPlus" /> Request Links (@RequestLinks.Count())</span>
+                <span><Icon Name="IconName.UserPlus"/> Request Links (@RequestLinks.Count())</span>
             </Tab>
             <Tab Name="uploadLinks">
-                <span><Icon Name="IconName.FileUpload" /> Upload Links (@UploadLinks.Count())</span>
+                <span><Icon Name="IconName.FileUpload"/> Upload Links (@UploadLinks.Count())</span>
             </Tab>
         </Items>
         <Content>
@@ -37,25 +38,27 @@
                             <CardHeader>
                                 <Row>
                                     <Column>
-                                        <CardTitle Size="3">@link.LinkTitle</CardTitle> 
+                                        <CardTitle Size="3">@link.LinkTitle</CardTitle>
                                         <CardSubtitle Margin="Margin.Is3.FromTop">
-                                            <Icon Name="IconName.Clock" />
+                                            <Icon Name="IconName.Clock"/>
                                             Created @link.Created by @link.CreatedBy.UserName
                                         </CardSubtitle>
                                     </Column>
                                     <Column ColumnSize="ColumnSize.IsAuto" Padding="Padding.Is2.FromEnd">
-                                        <Div Flex="Flex.JustifyContent.End"> 
+                                        <Div Flex="Flex.JustifyContent.End">
                                             @if (link.IsProtected)
                                             {
                                                 <Badge Color="Color.Danger" Margin="Margin.Is1.OnX">
-                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Lock" /> Protected
+                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Lock"/>
+                                                    Protected
                                                 </Badge>
                                             }
                                             @if (link.NotifyOnUpload)
                                             {
                                                 <Badge Color="Color.Primary" Margin="Margin.Is1.OnX">
-                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Bell" />Notifications
-                                                    </Badge>
+                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Bell"/>
+                                                    Notifications
+                                                </Badge>
                                             }
                                         </Div>
                                     </Column>
@@ -64,7 +67,7 @@
                             <CardBody>
                                 <div class="d-flex flex-wrap gap-2 mb-4">
                                     <div>
-                                        <Icon Margin="Margin.Is1.FromEnd" Name="IconName.FileUpload" />
+                                        <Icon Margin="Margin.Is1.FromEnd" Name="IconName.FileUpload"/>
                                         <span>Size Limit: @FileUtils.BytesToString(link.AllFilesSizeLimit)</span>
                                     </div>
                                     @if (link.AllowedExtensions.Any())
@@ -74,7 +77,7 @@
                                         </div>
                                     }
                                 </div>
-                                
+
                                 <Text>@link.Message</Text>
 
                                 <div class="d-flex justify-content-between align-items-center mb-1 mt-4">
@@ -92,10 +95,25 @@
                                             <div class="d-flex flex-column">
                                                 <div class="d-flex align-items-center gap-2 mb-1">
                                                     <Icon Name="IconName.Mail"/>
-                                                    <Anchor To="@("/link/" + link.LinkId + "/" + slot.RequestLinkUploadSlotId)" Class="font-weight-bold">@slot.Email</Anchor>
-                                                    <Anchor To="@($"/download/fromRequest/{link.LinkId}/{slot.RequestLinkUploadSlotId}")" download>
-                                                        <Icon Name="IconName.Download"></Icon>
-                                                    </Anchor>
+                                                    @if (slot.Uploaded != null)
+                                                    {
+                                                        <Anchor
+                                                            To="@("/link/" + link.LinkId + "/" + slot.RequestLinkUploadSlotId)"
+                                                            Class="font-weight-bold">@slot.Email</Anchor>
+                                                        <Anchor
+                                                            To="@($"/download/fromRequest/{link.LinkId}/{slot.RequestLinkUploadSlotId}")"
+                                                            download>
+                                                            <Icon Name="IconName.Download"></Icon>
+                                                        </Anchor>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@slot.Email</span>
+                                                    }
+                                                    <Button Size="Size.Small" Color="Color.Light"
+                                                            Clicked="() => CopyRequestLink(link, slot)">
+                                                        <Icon Name="IconName.Copy"></Icon>
+                                                    </Button>
                                                 </div>
                                                 @if (!string.IsNullOrEmpty(slot.Message))
                                                 {
@@ -105,8 +123,10 @@
                                                     Status: @(slot.Uploaded.HasValue ? $"Uploaded on {slot.Uploaded.Value}" : "Pending")
                                                 </div>
                                             </div>
-                                            <Div Margin="Margin.IsAuto.FromStart" Flex="Flex.InlineFlex">
-                                                <ConfirmButton Color="Color.Danger" OnConfirm="() => RemoveUploadSlot(link, slot)">Delete</ConfirmButton>
+                                            <Div Margin="Margin.IsAuto.FromStart" Flex="Flex.InlineFlex" Gap="Gap.Is2">
+                                                <ConfirmButton Size="Size.Small" Color="Color.Danger"
+                                                               OnConfirm="() => RemoveUploadSlot(link, slot)">Delete
+                                                </ConfirmButton>
                                             </Div>
                                         </div>
                                     }
@@ -114,7 +134,9 @@
                             </CardBody>
                             <CardFooter>
                                 <Div Flex="Flex.JustifyContent.End">
-                                    <ConfirmButton Color="Color.Danger" OnConfirm="() => RemoveRequestLink(link)">Delete link</ConfirmButton>
+                                    <ConfirmButton Color="Color.Danger" OnConfirm="() => RemoveRequestLink(link)">Delete
+                                        link
+                                    </ConfirmButton>
                                 </Div>
                             </CardFooter>
                         </Card>
@@ -134,12 +156,13 @@
                             <CardHeader>
                                 <CardTitle Size="3">
                                     <Anchor To="@("/link/" + link.LinkId)">@link.LinkTitle</Anchor>
-                                    <Anchor Margin="Margin.Is2.FromStart" To="@($"/download/fromUpload/{link.LinkId}")" download>
+                                    <Anchor Margin="Margin.Is2.FromStart" To="@($"/download/fromUpload/{link.LinkId}")"
+                                            download>
                                         <Icon IconSize="IconSize.Small" Name="IconName.Download"></Icon>
                                     </Anchor>
-                                </CardTitle> 
+                                </CardTitle>
                                 <CardSubtitle Margin="Margin.Is3.FromTop">
-                                    <Icon Name="IconName.Clock" />
+                                    <Icon Name="IconName.Clock"/>
                                     Created @link.Created by @link.CreatedBy.UserName
                                 </CardSubtitle>
                             </CardHeader>
@@ -148,7 +171,9 @@
                             </CardBody>
                             <CardFooter>
                                 <Div Flex="Flex.JustifyContent.End">
-                                    <ConfirmButton Color="Color.Danger" OnConfirm="() => RemoveUploadLink(link)">Delete link</ConfirmButton>
+                                    <ConfirmButton Color="Color.Danger" OnConfirm="() => RemoveUploadLink(link)">Delete
+                                        link
+                                    </ConfirmButton>
                                 </Div>
                             </CardFooter>
                         </Card>
@@ -166,6 +191,8 @@
     private List<RequestLink> RequestLinks { get; set; } = [];
     private List<UploadLink> UploadLinks { get; set; } = [];
 
+    private string _tooltipText = "";
+
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await UsersService.GetCurrentUser();
@@ -174,15 +201,15 @@
 
     private async Task ReloadData()
     {
-        RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).ToListAsync();
-        UploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).ToListAsync();
+        RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderBy(x => x.Created).ToListAsync();
+        UploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).OrderBy(x => x.Created).ToListAsync();
     }
 
     private void OnSelectedTabChanged(string name)
     {
         selectedTab = name;
     }
-    
+
     private async Task RemoveRequestLink(RequestLink link)
     {
         await StoreService.DeleteDirectory(link.LinkId.ToString(), true);
@@ -205,6 +232,15 @@
         parentLink.UploadSlots.Remove(slot);
         await DbContext.SaveChangesAsync();
         await ReloadData();
+    }
+
+    private async Task CopyRequestLink(RequestLink link, RequestLinkUploadSlot slot)
+    {
+        var linkText = $"{NavigationManager.BaseUri}request/{link.LinkId}/{slot.RequestLinkUploadSlotId}";
+        await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", linkText);
+        _tooltipText = "Copied!";
+        await Task.Delay(800);
+        // _tooltipText = "";
     }
 
 }

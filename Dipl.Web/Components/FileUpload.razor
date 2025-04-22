@@ -120,7 +120,7 @@ else
     private FileUploadModel _model = new();
     private List<FileInfo> _alreadyPresentFiles = [];
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
-    private CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _cts = new();
     private bool _canViewAfterClose;
     private bool _canReopen;
     private UploadLink? _currentUploadLink;

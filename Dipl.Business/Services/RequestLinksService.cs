@@ -29,7 +29,7 @@ public class RequestLinksService(
             UploadSlots = createModel.SendTo.Select(sendto => new RequestLinkUploadSlot
             {
                 RequestLinkUploadSlotId = Guid.NewGuid(),
-                Email = sendto,
+                Email = sendto
             }).ToList()
         };
 

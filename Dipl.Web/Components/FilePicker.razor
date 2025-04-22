@@ -9,15 +9,15 @@
         <div class="w-100 d-flex justify-content-center lowest">
             <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
         </div>
-        
+
         <div class="w-100 d-flex justify-content-center lowest">
             <Span TextColor="TextColor.Muted">File types limited to: @string.Join(", ", Accept)</Span>
         </div>
-        
+
 
         <div class="d-flex gap-2 justify-content-center mx-auto">
             <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
-            </Button> 
+            </Button>
             <Button Type="ButtonType.Button" Color="Color.Secondary" Clicked="AddDirectory">Add
                 folder
             </Button>
@@ -70,7 +70,8 @@
         </Card>
     }
 
-    <FileEdit Filter="@string.Join(',', Accept)" @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple Directory="_pickingDirectory"/>
+    <FileEdit Filter="@string.Join(',', Accept)" @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple
+              Directory="_pickingDirectory"/>
 </div>
 
 @code {
@@ -145,9 +146,9 @@
             else
             {
                 var inDelete = DeleteOnlyValue.FirstOrDefault(x => x.Name == file.Name);
-                if(inDelete is not null)
+                if (inDelete is not null)
                     DeleteOnlyValue.Remove(inDelete);
-                
+
                 append.Add(file);
             }
         }

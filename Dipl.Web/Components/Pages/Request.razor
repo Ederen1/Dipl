@@ -1,5 +1,4 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
-@using System.ComponentModel.DataAnnotations
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
@@ -61,7 +60,7 @@
                         <FieldBody Border="Border.Is1.Danger">
                             <Dipl.Web.Components.FilePicker Accept="Slot.RequestLink.AllowedExtensions"
                                                             Value="_filesToUpload"
-                                                            ValueChanged="async (value) => { _filesToUpload = value; await Revalidate();}"
+                                                            ValueChanged="async value => { _filesToUpload = value; await Revalidate();}"
                                                             @bind-DeleteOnlyValue="_alreadyPresentFiles"
                                                             Disabled="_closed">
                             </Dipl.Web.Components.FilePicker>
@@ -118,7 +117,7 @@
 
         // Check if the user responding to a request is logged in, then allow the access
         var currentUser = await UserAuthentication.GetUserInfo();
-        if (!Slot.RequestLink.IsProtected || currentUser?.Email == Slot.Email)
+        if (!Slot.RequestLink.IsProtected || currentUser?.Email == Slot.Email || currentUser?.Email == Slot.RequestLink.CreatedBy.Email)
         {
             _userConfirmed = true;
             await LoadFilesAndLogic();
@@ -159,9 +158,6 @@
         if (!await _validations.ValidateAll())
             return;
 
-        if (_alreadyPresentFiles.Count == 0 && _filesToUpload.Count == 0)
-            return;
-
         _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles);
         _filesToUpload.Clear();
         _closed = true;
@@ -176,34 +172,35 @@
         await LoadFilesAndLogic();
     }
 
+    private void MarkInvalid(ValidatorEventArgs e, string message)
+    {
+        e.Status = ValidationStatus.Error;
+        e.ErrorText = message;
+        filePickerValidations = e;
+    }
+
     private void FileSizeAndExtensionValidator(ValidatorEventArgs e)
     {
         if (_filesToUpload.Count == 0 && _alreadyPresentFiles.Count == 0)
         {
-            e.Status = ValidationStatus.Error;
-            e.ErrorText = "No files to upload";
-            filePickerValidations = e;
+            MarkInvalid(e, "No Files to upload");
             return;
         }
-        
+
         var extensionsInvalid = _filesToUpload.Any(x => !Slot.RequestLink.AllowedExtensions.Any(ex => x.Name.EndsWith(ex)));
-        if (Slot.RequestLink.AllowedExtensions.Length >  0 && extensionsInvalid)
+        if (Slot.RequestLink.AllowedExtensions.Length > 0 && extensionsInvalid)
         {
-            e.Status = ValidationStatus.Error;
-            e.ErrorText = "Some files have disallowed extensions. Please remove them";
-            filePickerValidations = e;
+            MarkInvalid(e, "Some files have disallowed extensions. Please remove them");
             return;
         }
 
-        var allFileSizes = _filesToUpload.Select(x => x.Size).Concat(_alreadyPresentFiles.Select(x => x.Size));
-        var sum = allFileSizes.Sum();
-        if (sum > Slot.RequestLink.AllFilesSizeLimit)
-        {
-            e.Status = ValidationStatus.Error;
-            e.ErrorText = $"You are {FileUtils.BytesToString(sum - Slot.RequestLink.AllFilesSizeLimit)} over the limit for capacity";
-        }
+        var allFileSizes = _filesToUpload.Select(x => x.Size).Concat(_alreadyPresentFiles.Select(x => x.Size)).ToList();
 
-        filePickerValidations = e;
+        if (allFileSizes.Sum() > Slot.RequestLink.AllFilesSizeLimit)
+        {
+            var size = FileUtils.BytesToString(allFileSizes.Sum() - Slot.RequestLink.AllFilesSizeLimit);
+            MarkInvalid(e, $"You are {size} over the limit for capacity");
+        }
     }
 
     private async Task Revalidate()

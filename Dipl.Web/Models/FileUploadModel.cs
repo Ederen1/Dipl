@@ -9,7 +9,7 @@ public class FileUploadModel
     public string? GuestEmail { get; set; }
     public List<string> EmailTo { get; set; } = [];
     public string LinkTitle { get; set; } = null!;
-    public string? MessageForUser { get; set; }
+    public string MessageForUser { get; set; } = "";
     public List<IFileEntry> FilesToUpload { get; set; } = [];
 
     public CreateUploadLinkModel MapToCreateUploadModel(string? userName)

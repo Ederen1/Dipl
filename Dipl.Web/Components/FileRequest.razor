@@ -112,7 +112,7 @@ else
     private Validations _validations = null!;
     private RequestLinkCreateModel _createModel = new();
     private ValidationStatus _emailToValidationStatus = ValidationStatus.None;
-    private CancellationTokenSource _cts = new();
+    private readonly CancellationTokenSource _cts = new();
     private bool _closed;
 
     public async ValueTask DisposeAsync()

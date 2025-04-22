@@ -67,7 +67,7 @@ public class FileManagerService(
                 Files = files.Select(file => new FileInfoModel
                 {
                     Name = file.Name,
-                    Size = file.Size,
+                    Size = file.Size
                 }).ToArray()
             };
 
