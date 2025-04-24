@@ -29,8 +29,4 @@
         <ProjectReference Include="..\Dipl.Business\Dipl.Business.csproj"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Folder Include="folder\"/>
-    </ItemGroup>
-
 </Project>

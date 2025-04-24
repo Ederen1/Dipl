@@ -22,6 +22,9 @@ public class FileManagerService(
     public async Task<(UploadLink, List<FileInfo>)> UploadAllToFolder(FileUploadModel model, UploadLink? uploadLink,
         List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
     {
+        if (model.Password != model.MatchingPassword)
+            throw new Exception("Passwords do not match");
+
         var createdBy = await usersService.GetCurrentUser();
         var mappedModel = model.MapToCreateUploadModel(createdBy.UserName);
 
@@ -33,26 +36,32 @@ public class FileManagerService(
 
         if (uploadLink is null)
             await dbContext.UploadLinks.AddAsync(link, cancellationToken);
+        
+        var folder = link.LinkId.ToString();
+        if (uploadLink is not null)
+            await DeleteFilesBeforeInsert(folder, alreadyPresentFiles);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (uploadLink is null && model.Password is not null)
+            await LinkSecurityService.SetupSecureLinkAsync(model.Password, link);
 
-        await UploadFiles(model.FilesToUpload, alreadyPresentFiles, link.LinkId.ToString(), cancellationToken);
-        await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
-
-        var folderContents = await storeService.ListFolder($"{link.LinkId}");
-        if (folderContents is null)
+        var folderContents = await UploadFiles(model.FilesToUpload, folder, model.Password, link, cancellationToken);
+        if (folderContents.Count == 0)
             throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
 
+        await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        
         return (link, folderContents.ToList());
     }
 
     public async Task<List<FileInfo>> RespondToFileRequest(RequestLinkUploadSlot slot, List<IFileEntry> filesToUpload,
-        List<FileInfo> alreadyPresentFiles, CancellationToken cancellationToken = default)
+        List<FileInfo> alreadyPresentFiles, string password, CancellationToken cancellationToken = default)
     {
         var link = slot.RequestLink;
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
-        var files = await UploadFiles(filesToUpload, alreadyPresentFiles, dir, cancellationToken);
+        await DeleteFilesBeforeInsert(dir, alreadyPresentFiles);
+        var files = await UploadFiles(filesToUpload, dir, password, link, cancellationToken);
         slot.Uploaded = DateTime.Now;
 
         if (link.NotifyOnUpload)
@@ -82,23 +91,40 @@ public class FileManagerService(
         return folderContents.ToList();
     }
 
-    private async Task<List<FileInfo>> UploadFiles(List<IFileEntry> files, List<FileInfo> alreadyPresentFiles,
-        string folder, CancellationToken cancellationToken)
+    private async Task DeleteFilesBeforeInsert(string folder, List<FileInfo> alreadyPresentFiles)
     {
         var existingFiles = await storeService.ListFolder(folder);
         var toDelete = existingFiles?.Where(f => alreadyPresentFiles.All(apf => apf.Name != f.Name)).ToList() ?? [];
 
         foreach (var file in toDelete)
             await storeService.DeleteFile(file.Name, folder);
+    }
 
+    private async Task<List<FileInfo>> UploadFiles(List<IFileEntry> files, string folder, string? password,
+        BaseLink link, CancellationToken cancellationToken)
+    {
         foreach (var chunkedFiles in files.Chunk(UploadChunkSize))
         {
-            var tasks = chunkedFiles.Select(file => storeService.InsertFile(file.Name, folder,
-                file.OpenReadStream(long.MaxValue, cancellationToken)));
+            var tasks = chunkedFiles.Select(file => ProcessFile(folder, file, link, password, cancellationToken));
 
             await Task.WhenAll(tasks);
         }
 
         return (await storeService.ListFolder(folder))?.ToList() ?? [];
+    }
+
+    private async Task ProcessFile(string folder, IFileEntry file, BaseLink link, string? password,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = file.OpenReadStream(long.MaxValue, cancellationToken);
+        if (link.Salt is not null)
+        {
+            await using var cryptStream = await LinkSecurityService.EncryptDataAsync(link, password!, stream);
+            await storeService.InsertFile(file.Name, folder, cryptStream);
+        }
+        else
+        {
+            await storeService.InsertFile(file.Name, folder, stream);
+        }
     }
 }

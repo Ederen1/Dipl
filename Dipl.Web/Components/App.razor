@@ -30,6 +30,57 @@
         pickerContainer.ondragover = () => pickerContainer.classList.add("dragover");
         pickerContainer.ondragleave = () => pickerContainer.classList.remove("dragover");
     }
+
+    window.downloadPasswordProtectedFile = async (url, password) => {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                ...(password && {'X-DownloadAuth': password}),
+                'Accept': 'application/octet-stream'
+            }
+        });
+
+        if (!response.ok){
+            return await response.text();
+        }
+
+        const blob = await response.blob();
+        const objectURL = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectURL;
+        a.download = window.getFilenameFromDisposition(response.headers.get('Content-Disposition'));
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }
+
+    window.getFilenameFromDisposition = (header) => {
+        if (!header) return null;
+
+        // Attempt to extract filename* (RFC 5987)
+        const filenameStarMatch = header.match(/filename\*\s*=\s*([^;]+)/i);
+        if (filenameStarMatch) {
+            const value = filenameStarMatch[1].trim();
+            // Expected format: UTF-8''encoded-filename
+            const parts = value.split("''");
+            if (parts.length === 2) {
+                try {
+                    return decodeURIComponent(parts[1]);
+                } catch (e) {
+                    console.warn('Failed to decode filename*:', e);
+                }
+            }
+        }
+
+        // Attempt to extract filename
+        const filenameMatch = header.match(/filename\s*=\s*(?:(["'])(.*?)\1|([^;]+))/i);
+        if (filenameMatch) {
+            return filenameMatch[2] || filenameMatch[3];
+        }
+
+        return null;
+    }
 </script>
 </body>
 

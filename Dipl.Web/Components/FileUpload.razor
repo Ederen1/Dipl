@@ -82,6 +82,34 @@ else
                 </FieldBody>
             </Field>
         </Validation>
+        
+        <Fields>
+            <Validation Validator="ValidatePassword">
+                <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                    <FieldLabel>Password</FieldLabel>
+                    <FieldBody>
+                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.Password" Placeholder="Password..." Disabled="_disableEdit || _currentUploadLink is not null">
+                            <Feedback>
+                                <ValidationError>Password must be at least 8 letters long</ValidationError>
+                            </Feedback>
+                        </TextEdit>
+                    </FieldBody>
+                </Field>
+            </Validation>
+
+            <Validation Validator="ValidateMatchingPassword">
+                <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                    <FieldLabel>Confirm password</FieldLabel>
+                    <FieldBody>
+                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.MatchingPassword" Placeholder="Confirm password..." Disabled="_disableEdit || _currentUploadLink is not null">
+                            <Feedback>
+                                <ValidationError>Passwords do not match</ValidationError>
+                            </Feedback>
+                        </TextEdit>
+                    </FieldBody>
+                </Field>
+            </Validation>
+        </Fields>
 
         <Field>
             <FieldLabel>Message for user</FieldLabel>
@@ -167,6 +195,20 @@ else
     private async Task CopyToClipboard()
     {
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", $"{NavigationManager.BaseUri}link/{_currentUploadLink!.LinkId}");
+    }
+
+    private static void ValidatePassword(ValidatorEventArgs e)
+    {
+        var pass = Convert.ToString(e.Value);
+        if (pass?.Length < 8)
+            e.Status = ValidationStatus.Error;
+    }
+
+    private void ValidateMatchingPassword(ValidatorEventArgs e)
+    {
+        var pass = Convert.ToString(e.Value);
+        if (pass?.Length < 8 && _model.Password != pass)
+            e.Status = ValidationStatus.Error;
     }
 
 }

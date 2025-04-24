@@ -18,7 +18,7 @@ public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, I
         logger.LogInformation("Uploading file: {}", fileName);
 
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
+        await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
         var transferDone = false;
         try
         {
@@ -31,7 +31,6 @@ public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, I
         }
         finally
         {
-            await file.DisposeAsync();
             if (!transferDone)
                 File.Delete(fullPath);
         }

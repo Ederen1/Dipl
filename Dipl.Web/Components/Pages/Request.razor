@@ -158,7 +158,7 @@
         if (!await _validations.ValidateAll())
             return;
 
-        _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles);
+        _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, null);
         _filesToUpload.Clear();
         _closed = true;
     }

@@ -100,11 +100,10 @@
                                                         <Anchor
                                                             To="@("/link/" + link.LinkId + "/" + slot.RequestLinkUploadSlotId)"
                                                             Class="font-weight-bold">@slot.Email</Anchor>
-                                                        <Anchor
-                                                            To="@($"/download/fromRequest/{link.LinkId}/{slot.RequestLinkUploadSlotId}")"
-                                                            download>
+                                                        <Button Color="Color.Light"
+                                                                Clicked="() => DownloadFolder(link.LinkId, slot.RequestLinkUploadSlotId)">
                                                             <Icon Name="IconName.Download"></Icon>
-                                                        </Anchor>
+                                                        </Button>
                                                     }
                                                     else
                                                     {
@@ -156,10 +155,9 @@
                             <CardHeader>
                                 <CardTitle Size="3">
                                     <Anchor To="@("/link/" + link.LinkId)">@link.LinkTitle</Anchor>
-                                    <Anchor Margin="Margin.Is2.FromStart" To="@($"/download/fromUpload/{link.LinkId}")"
-                                            download>
+                                    <Button Color="Color.Light" Margin="Margin.Is2.FromStart" Clicked="() => DownloadFolder(link.LinkId, null)" >
                                         <Icon IconSize="IconSize.Small" Name="IconName.Download"></Icon>
-                                    </Anchor>
+                                    </Button>
                                 </CardTitle>
                                 <CardSubtitle Margin="Margin.Is3.FromTop">
                                     <Icon Name="IconName.Clock"/>
@@ -184,6 +182,8 @@
     </Tabs>
 </Container>
 
+<DownloadWithPasswordModal @ref="_downloadWithPasswordModal"></DownloadWithPasswordModal>
+
 @code {
     private string selectedTab = "requestLinks";
     private User _currentUser;
@@ -192,6 +192,7 @@
     private List<UploadLink> UploadLinks { get; set; } = [];
 
     private string _tooltipText = "";
+    private DownloadWithPasswordModal _downloadWithPasswordModal = null!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -239,8 +240,21 @@
         var linkText = $"{NavigationManager.BaseUri}request/{link.LinkId}/{slot.RequestLinkUploadSlotId}";
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", linkText);
         _tooltipText = "Copied!";
-        await Task.Delay(800);
-        // _tooltipText = "";
+    }
+
+    private async Task DownloadFolder(Guid linkId, Guid? slotId)
+    {
+        var url = slotId is null ? $"/download/fromUpload/{linkId}" : $"/download/fromRequest/{linkId}/{slotId}";
+        var passwordProtected = slotId is null ? UploadLinks.First(x => x.LinkId == linkId).AesIV is not null : RequestLinks.First(x => x.LinkId == linkId).AesIV is not null;
+        if (passwordProtected)
+        {
+            _downloadWithPasswordModal.DownloadUrl = url;
+            await _downloadWithPasswordModal.ShowModal();
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("window.downloadPasswordProtectedFile", url);
+        }
     }
 
 }

@@ -4,6 +4,7 @@
 @using Dipl.Business.Services.Interfaces
 @using Dipl.Common.Types
 @using Dipl.Common.Util
+@using Microsoft.EntityFrameworkCore
 
 @inject IStoreService StoreService
 @inject AppDbContext DbContext
@@ -18,21 +19,19 @@
     }
     else
     {
-        var linkWithId = SlotId == null ? "fromUpload/" + LinkId : "fromRequest/" + LinkId + "/" + SlotId.Value;
         <Row Margin="Margin.Is2.OnY">
             <Column ColumnSize="ColumnSize.IsAuto">
                 @if (Files.Length == 1)
                 {
                     <Button Type="ButtonType.Link" Color="Color.Primary"
-                            To="@($"/download/{linkWithId}/{Files[0].Name}")"
-                            Download="@Files[0].Name">
+                            Clicked="() => DownloadFile(Files[0].Name)">
                         <Icon Name="IconName.Download" Class="me-2"/>
                         Download file
                     </Button>
                 }
                 else if (Files.Length > 1)
                 {
-                    <Button Type="ButtonType.Link" Color="Color.Primary" To="@("/download/" + linkWithId)">
+                    <Button Type="ButtonType.Link" Color="Color.Primary" Clicked="DownloadFolder">
                         <Icon Name="IconName.Download" Class="me-2"/>
                         Download all files
                     </Button>
@@ -67,9 +66,7 @@
                         <TableRowCell>@file.Name</TableRowCell>
                         <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
                         <TableRowCell Style="width: 0;" Class="text-nowrap">
-                            <Button Type="ButtonType.Link" Color="Color.Primary"
-                                    To="@($"/download/{linkWithId}/{file.Name}")"
-                                    Download="@file.Name">
+                            <Button Type="ButtonType.Link" Color="Color.Primary" Clicked="() => DownloadFile(file.Name)">
                                 <Icon Name="IconName.Download" Class="me-2"/>
                                 Download
                             </Button>
@@ -81,6 +78,8 @@
     }
 </Container>
 
+<DownloadWithPasswordModal @ref="_downloadWithPasswordModal"></DownloadWithPasswordModal> 
+
 @code {
 
     [Parameter]
@@ -91,7 +90,9 @@
 
     private FileInfo[] Files { get; set; } = [];
     private bool IsTheRightUser { get; set; }
-
+    private bool IsPasswordProtected { get; set; }
+    private DownloadWithPasswordModal _downloadWithPasswordModal = null!;
+    
     protected override async Task OnInitializedAsync()
     {
         if (SlotId is not null)
@@ -102,13 +103,16 @@
 
             var currentUser = await UserAuthentication.GetUserInfo();
             IsTheRightUser = currentUser?.UserId == slot.RequestLink.CreatedById;
+            IsPasswordProtected = slot.RequestLink.AesIV is not null;
         }
         else
         {
-            if (!DbContext.UploadLinks.Any(x => x.LinkId == LinkId))
+            var uploadLink = await DbContext.UploadLinks.FirstOrDefaultAsync(x => x.LinkId == LinkId); 
+            if (uploadLink is null)
                 throw new Exception("Link not found");
 
             IsTheRightUser = true;
+            IsPasswordProtected = uploadLink.AesIV is not null;
         }
 
         Files = await StoreService.ListFolder($"{LinkId}/{SlotId}") ?? [];
@@ -117,6 +121,34 @@
     private async Task CopyToClipboard()
     {
         await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", NavigationManager.Uri);
+    }
+
+    private async Task DownloadFile(string name)
+    {
+        var url = SlotId is null ? $"/download/fromUpload/{LinkId}/{name}" : $"/download/fromRequest/{LinkId}/{SlotId}/{name}";
+        if (IsPasswordProtected)
+        {
+            _downloadWithPasswordModal.DownloadUrl = url;
+            await _downloadWithPasswordModal.ShowModal();
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("window.downloadPasswordProtectedFile", url);
+        }
+    }
+    
+    private async Task DownloadFolder()
+    {
+        var url = SlotId is null ? $"/download/fromUpload/{LinkId}" : $"/download/fromRequest/{LinkId}/{SlotId}";
+        if (IsPasswordProtected)
+        {
+            _downloadWithPasswordModal.DownloadUrl = url;
+            await _downloadWithPasswordModal.ShowModal();
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("window.downloadPasswordProtectedFile", url);
+        }
     }
 
 }

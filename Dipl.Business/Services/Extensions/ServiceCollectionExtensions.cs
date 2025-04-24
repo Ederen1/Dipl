@@ -11,7 +11,6 @@ public static class ServiceCollectionExtensions
 {
     public static void AddServiceLayer(this IServiceCollection serviceCollection)
     {
-        serviceCollection.AddScoped<UploadLinksService>();
         serviceCollection.AddScoped<RequestLinksService>();
         serviceCollection.AddScoped<UsersService>();
         serviceCollection.AddScoped<UserAuthenticationService>();
