@@ -2,9 +2,8 @@
 @using Dipl.Business.Services
 @implements IAsyncDisposable
 
-@inject ILogger<FileRequest> Logger
 @inject RequestLinksService RequestLinksService
-@inject UserAuthenticationService UserAuthenticationService
+@inject IConfiguration Configuration
 
 @if (!_closed)
 {
@@ -44,6 +43,37 @@
                           Placeholder="Message for user..."></MemoEdit>
             </FieldBody>
         </Field>
+        
+        @if (Configuration.GetValue<bool>("EncryptedRequests"))
+        {
+            <Fields>
+                <Validation Validator="ValidatePassword">
+                    <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                        <FieldLabel>Password</FieldLabel>
+                        <FieldBody>
+                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.Password" Placeholder="Password..." Disabled="_closed">
+                                <Feedback>
+                                    <ValidationError>Password must be at least 8 letters long</ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+
+                <Validation Validator="ValidateMatchingPassword">
+                    <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
+                        <FieldLabel>Confirm password</FieldLabel>
+                        <FieldBody>
+                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.MatchingPassword" Placeholder="Confirm password..." Disabled="_closed">
+                                <Feedback>
+                                    <ValidationError>Passwords do not match</ValidationError>
+                                </Feedback>
+                            </TextEdit>
+                        </FieldBody>
+                    </Field>
+                </Validation>
+            </Fields>   
+        }
 
         <Fields>
             <Field ColumnSize="ColumnSize.Is4.OnDesktop.Is12.OnMobile">
@@ -162,6 +192,20 @@ else
     {
         var split = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         _createModel.AllowedExtensions = split;
+    }
+    
+    private static void ValidatePassword(ValidatorEventArgs e)
+    {
+        var pass = Convert.ToString(e.Value);
+        if (pass?.Length < 8)
+            e.Status = ValidationStatus.Error;
+    }
+
+    private void ValidateMatchingPassword(ValidatorEventArgs e)
+    {
+        var pass = Convert.ToString(e.Value);
+        if (pass?.Length < 8 && _createModel.Password != pass)
+            e.Status = ValidationStatus.Error;
     }
 
 }

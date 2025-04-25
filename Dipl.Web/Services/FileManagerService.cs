@@ -1,4 +1,5 @@
-﻿using Blazorise;
+﻿using System.Security.Cryptography;
+using Blazorise;
 using Dipl.Business;
 using Dipl.Business.EmailModels;
 using Dipl.Business.Entities;
@@ -61,6 +62,13 @@ public class FileManagerService(
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
         await DeleteFilesBeforeInsert(dir, alreadyPresentFiles);
+
+        if (!string.IsNullOrWhiteSpace(password))
+        {
+            if (!await LinkSecurityService.PasswordMatchesLink(slot.RequestLink, password))
+                throw new CryptographicException("Passwords do not match");
+        }
+        
         var files = await UploadFiles(filesToUpload, dir, password, link, cancellationToken);
         slot.Uploaded = DateTime.Now;
 

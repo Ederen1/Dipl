@@ -1,4 +1,6 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
+@using System.Security.Cryptography
+@using System.Xml.Schema
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
@@ -45,50 +47,68 @@
         }
         else
         {
-            <Validations @ref="_validations" ValidateOnLoad="false">
-                <Field>
-                    <FieldLabel>Message for user</FieldLabel>
-                    <FieldBody>
-                        <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
-                                  Disabled="_closed"></MemoEdit>
-                    </FieldBody>
-                </Field>
+            <Field>
+                <FieldLabel>Message for user</FieldLabel>
+                <FieldBody>
+                    <MemoEdit Rows="5" @bind-Text="@Slot.Message" Placeholder="Message for user..."
+                              Disabled="_closed"></MemoEdit>
+                </FieldBody>
+            </Field>
 
-                <Validation Validator="FileSizeAndExtensionValidator">
-                    <Field>
-                        <FieldLabel>Upload files here</FieldLabel>
-                        <FieldBody Border="Border.Is1.Danger">
-                            <Dipl.Web.Components.FilePicker Accept="Slot.RequestLink.AllowedExtensions"
-                                                            Value="_filesToUpload"
-                                                            ValueChanged="async value => { _filesToUpload = value; await Revalidate();}"
-                                                            @bind-DeleteOnlyValue="_alreadyPresentFiles"
-                                                            Disabled="_closed">
-                            </Dipl.Web.Components.FilePicker>
-                        </FieldBody>
-                        @if (filePickerValidations?.Status == ValidationStatus.Error)
-                        {
-                            <Span TextColor="TextColor.Danger">@filePickerValidations.ErrorText</Span>
-                        }
-                    </Field>
-                </Validation>
+            <Field>
+                <FieldLabel>Upload files here</FieldLabel>
+                <FieldBody Border="Border.Is1.Danger">
+                    <Dipl.Web.Components.FilePicker Accept="Slot.RequestLink.AllowedExtensions"
+                                                    Value="_filesToUpload"
+                                                    ValueChanged="value => { _filesToUpload = value; }"
+                                                    @bind-DeleteOnlyValue="_alreadyPresentFiles"
+                                                    Disabled="_closed">
+                    </Dipl.Web.Components.FilePicker>
+                </FieldBody>
+                @if (filePickerValidationMessage is not null)
+                {
+                    <Span TextColor="TextColor.Danger">filePickerValidationMessage</Span>
+                }
+            </Field>
 
-                @if (_closed && _canReopen)
-                {
-                    <Button Width="Width.Is100" Color="Color.Success"
-                            Clicked="() => { _closed = false; }">Reopen
-                    </Button>
-                }
-                else if (!_closed)
-                {
-                    <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
-                    </Button>
-                }
-            </Validations>
+            @if (_closed && _canReopen)
+            {
+                <Button Width="Width.Is100" Color="Color.Success"
+                        Clicked="() => { _closed = false; }">Reopen
+                </Button>
+            }
+            else if (!_closed)
+            {
+                <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit
+                </Button>
+            }
         }
     }
-
-
 </Container>
+
+<Modal @ref="_modalRef">
+    <ModalContent Centered>
+        <ModalHeader>
+            <ModalTitle>Protected upload</ModalTitle>
+            <CloseButton/>
+        </ModalHeader>
+        <ModalBody>
+            <Validations ValidateOnLoad="false" @ref="_validations">
+                <Validation @ref="_passwordValidation" Validator="ValidationRule.IsNotEmpty">
+                    <Field>
+                        <FieldLabel>Password</FieldLabel>
+                        <TextEdit @bind-Text="Password" Role="TextRole.Password" Placeholder="Enter password..."/>
+                    </Field>
+                </Validation>
+            </Validations>
+        </ModalBody>
+        <ModalFooter>
+            <Button Color="Color.Secondary" Clicked="@HideModal">Close</Button>
+            <Button Color="Color.Primary" Clicked="@SubmitPasswordModal">Confirm</Button>
+        </ModalFooter>
+    </ModalContent>
+</Modal>
+
 
 @code {
 
@@ -105,11 +125,14 @@
     private bool _canViewAfterClose;
     private List<IFileEntry> _filesToUpload = [];
     private List<FileInfo> _alreadyPresentFiles = [];
+    private Modal _modalRef = null!;
+    private string Password = "";
 
     private RequestLinkUploadSlot Slot { get; set; } = null!;
 
     private bool _userConfirmed;
-    private ValidatorEventArgs filePickerValidations;
+    private string? filePickerValidationMessage;
+    private Validation _passwordValidation;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -155,12 +178,20 @@
 
     private async Task Submit()
     {
-        if (!await _validations.ValidateAll())
+        if (ValidateFiles() is { } errorMessage)
+        {
+            filePickerValidationMessage = errorMessage;
             return;
-
-        _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, null);
-        _filesToUpload.Clear();
-        _closed = true;
+        }
+        
+        if (Slot.RequestLink.VerifierHash is not null)
+            await _modalRef.Show();
+        else
+        {
+            _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, Password);
+            _filesToUpload.Clear();
+            _closed = true;
+        }
     }
 
     private async Task SubmitEmail()
@@ -172,40 +203,50 @@
         await LoadFilesAndLogic();
     }
 
-    private void MarkInvalid(ValidatorEventArgs e, string message)
-    {
-        e.Status = ValidationStatus.Error;
-        e.ErrorText = message;
-        filePickerValidations = e;
-    }
-
-    private void FileSizeAndExtensionValidator(ValidatorEventArgs e)
+    private string? ValidateFiles()
     {
         if (_filesToUpload.Count == 0 && _alreadyPresentFiles.Count == 0)
-        {
-            MarkInvalid(e, "No Files to upload");
-            return;
-        }
+            return "No files to upload";
 
         var extensionsInvalid = _filesToUpload.Any(x => !Slot.RequestLink.AllowedExtensions.Any(ex => x.Name.EndsWith(ex)));
         if (Slot.RequestLink.AllowedExtensions.Length > 0 && extensionsInvalid)
-        {
-            MarkInvalid(e, "Some files have disallowed extensions. Please remove them");
-            return;
-        }
+            return "Some files have disallowed extensions. Please remove them";
 
         var allFileSizes = _filesToUpload.Select(x => x.Size).Concat(_alreadyPresentFiles.Select(x => x.Size)).ToList();
-
         if (allFileSizes.Sum() > Slot.RequestLink.AllFilesSizeLimit)
         {
             var size = FileUtils.BytesToString(allFileSizes.Sum() - Slot.RequestLink.AllFilesSizeLimit);
-            MarkInvalid(e, $"You are {size} over the limit for capacity");
+            return $"You are {size} over the limit for capacity";
         }
+
+        return null;
+    }
+    
+
+    private async Task HideModal()
+    {
+        await _modalRef.Hide();
     }
 
-    private async Task Revalidate()
+    private async Task SubmitPasswordModal()
     {
-        await _validations.ValidateAll();
+        if (await _validations.ValidateAll())
+        {
+            try
+            {
+                await HideModal();
+                _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, Password);
+                _filesToUpload.Clear();
+                _closed = true;
+                Password = "";
+            }
+            catch(CryptographicException e)
+            {
+                await _modalRef.Show();
+                _passwordValidation.NotifyValidationStatusChanged(ValidationStatus.Error, ["Password does not match"]);
+            }
+        }
+        
     }
 
 }

@@ -13,6 +13,9 @@ public class RequestLinksService(
 {
     public async Task CreateLink(RequestLinkCreateModel createModel)
     {
+        if (createModel.Password != createModel.MatchingPassword)
+            throw new Exception("Passwords do not match");
+        
         var createdBy = await usersService.GetCurrentUser();
         var link = new RequestLink
         {
@@ -32,6 +35,9 @@ public class RequestLinksService(
                 Email = sendto
             }).ToList()
         };
+
+        if (createModel.Password is not null)
+            await LinkSecurityService.SetupSecureLinkAsync(createModel.Password, link);
 
         await storeService.CreateDirectoryIfNotExists(link.LinkId.ToString());
 

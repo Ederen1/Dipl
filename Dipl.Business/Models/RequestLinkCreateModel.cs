@@ -10,4 +10,6 @@ public class RequestLinkCreateModel
     public long? SizeLimitPremultiplied { get; set; }
     public long SizeLimitMultiplier { get; set; } = 1048576; // MB
     public string[] AllowedExtensions { get; set; } = [];
+    public string? Password { get; set; }
+    public string? MatchingPassword { get; set; }
 }
