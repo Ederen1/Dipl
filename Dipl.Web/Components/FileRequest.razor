@@ -197,6 +197,9 @@ else
     private static void ValidatePassword(ValidatorEventArgs e)
     {
         var pass = Convert.ToString(e.Value);
+        if (string.IsNullOrEmpty(pass))
+            return;
+        
         if (pass?.Length < 8)
             e.Status = ValidationStatus.Error;
     }
@@ -204,6 +207,9 @@ else
     private void ValidateMatchingPassword(ValidatorEventArgs e)
     {
         var pass = Convert.ToString(e.Value);
+        if (string.IsNullOrEmpty(_createModel.Password) && string.IsNullOrEmpty(pass))
+            return;
+        
         if (pass?.Length < 8 && _createModel.Password != pass)
             e.Status = ValidationStatus.Error;
     }

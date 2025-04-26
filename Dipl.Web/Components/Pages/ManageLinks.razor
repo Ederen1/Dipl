@@ -202,8 +202,8 @@
 
     private async Task ReloadData()
     {
-        RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderBy(x => x.Created).ToListAsync();
-        UploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).OrderBy(x => x.Created).ToListAsync();
+         RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderByDescending(x => x.Created).ToListAsync();
+        UploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).OrderByDescending(x => x.Created).ToListAsync();
     }
 
     private void OnSelectedTabChanged(string name)

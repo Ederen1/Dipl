@@ -11,8 +11,8 @@ public class FileUploadModel
     public string LinkTitle { get; set; } = null!;
     public string MessageForUser { get; set; } = "";
     public List<IFileEntry> FilesToUpload { get; set; } = [];
-    public string? Password;
-    public string? MatchingPassword;
+    public string Password = "";
+    public string MatchingPassword = "";
 
     public CreateUploadLinkModel MapToCreateUploadModel(string? userName)
     {

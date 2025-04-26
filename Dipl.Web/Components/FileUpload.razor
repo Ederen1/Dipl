@@ -1,3 +1,4 @@
+@using System.Diagnostics
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
 @using Dipl.Common.Types
@@ -135,7 +136,7 @@ else
         }
         else if (!_closed)
         {
-            <Button Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+            <Button Disabled="_submitDisabled" Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
         }
 
 
@@ -154,6 +155,7 @@ else
     private UploadLink? _currentUploadLink;
     private bool _closed;
     private bool _disableEdit;
+    private bool _submitDisabled;
 
     protected override void OnParametersSet()
     {
@@ -176,7 +178,11 @@ else
             return;
 
         _disableEdit = true;
+        _submitDisabled = true;
+        var timestamp = Stopwatch.GetTimestamp();
         (_currentUploadLink, _alreadyPresentFiles) = await FileManagerService.UploadAllToFolder(_model, _currentUploadLink, _alreadyPresentFiles);
+        Logger.LogWarning("Time to upload: {}", Stopwatch.GetElapsedTime(timestamp));
+        _submitDisabled = false;
         _model.FilesToUpload.Clear();
         _closed = true;
     }
@@ -200,6 +206,9 @@ else
     private static void ValidatePassword(ValidatorEventArgs e)
     {
         var pass = Convert.ToString(e.Value);
+        if (string.IsNullOrEmpty(pass))
+            return;
+        
         if (pass?.Length < 8)
             e.Status = ValidationStatus.Error;
     }
@@ -207,6 +216,9 @@ else
     private void ValidateMatchingPassword(ValidatorEventArgs e)
     {
         var pass = Convert.ToString(e.Value);
+        if (string.IsNullOrEmpty(_model.Password) && string.IsNullOrEmpty(pass))
+            return;
+        
         if (pass?.Length < 8 && _model.Password != pass)
             e.Status = ValidationStatus.Error;
     }

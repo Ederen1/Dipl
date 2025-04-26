@@ -7,6 +7,7 @@ using Dipl.Business.Models;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Web.Models;
+using Microsoft.JSInterop;
 using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Web.Services;
@@ -16,7 +17,8 @@ public class FileManagerService(
     EmailSenderService emailSenderService,
     UsersService usersService,
     RequestLinksService requestLinksService,
-    AppDbContext dbContext)
+    AppDbContext dbContext,
+    IJSRuntime jsRuntime)
 {
     private const int UploadChunkSize = 4;
 
@@ -42,10 +44,11 @@ public class FileManagerService(
         if (uploadLink is not null)
             await DeleteFilesBeforeInsert(folder, alreadyPresentFiles);
 
-        if (uploadLink is null && model.Password is not null)
+        if (uploadLink is null && !string.IsNullOrEmpty(model.Password))
             await LinkSecurityService.SetupSecureLinkAsync(model.Password, link);
 
-        var folderContents = await UploadFiles(model.FilesToUpload, folder, model.Password, link, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        var folderContents = await UploadFiles(link.LinkId, null, model.Password, cancellationToken);
         if (folderContents.Count == 0)
             throw new Exception($"Folder for link {link.LinkTitle} '{link.LinkId}' is empty. This should never happen");
 
@@ -62,14 +65,8 @@ public class FileManagerService(
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
         await DeleteFilesBeforeInsert(dir, alreadyPresentFiles);
-
-        if (!string.IsNullOrWhiteSpace(password))
-        {
-            if (!await LinkSecurityService.PasswordMatchesLink(slot.RequestLink, password))
-                throw new CryptographicException("Passwords do not match");
-        }
         
-        var files = await UploadFiles(filesToUpload, dir, password, link, cancellationToken);
+        var files = await UploadFiles(link.LinkId, slot.RequestLinkUploadSlotId, password, cancellationToken);
         slot.Uploaded = DateTime.Now;
 
         if (link.NotifyOnUpload)
@@ -108,31 +105,11 @@ public class FileManagerService(
             await storeService.DeleteFile(file.Name, folder);
     }
 
-    private async Task<List<FileInfo>> UploadFiles(List<IFileEntry> files, string folder, string? password,
-        BaseLink link, CancellationToken cancellationToken)
+    private async Task<List<FileInfo>> UploadFiles(Guid linkId, Guid? slotId, string? password, CancellationToken cancellationToken)
     {
-        foreach (var chunkedFiles in files.Chunk(UploadChunkSize))
-        {
-            var tasks = chunkedFiles.Select(file => ProcessFile(folder, file, link, password, cancellationToken));
-
-            await Task.WhenAll(tasks);
-        }
-
+        await jsRuntime.InvokeVoidAsync("window.uploadFiles", cancellationToken, linkId, slotId, password);
+        
+        var folder = slotId is null ? linkId.ToString() : $"{linkId}/{slotId}";
         return (await storeService.ListFolder(folder))?.ToList() ?? [];
-    }
-
-    private async Task ProcessFile(string folder, IFileEntry file, BaseLink link, string? password,
-        CancellationToken cancellationToken)
-    {
-        await using var stream = file.OpenReadStream(long.MaxValue, cancellationToken);
-        if (link.Salt is not null)
-        {
-            await using var cryptStream = await LinkSecurityService.EncryptDataAsync(link, password!, stream);
-            await storeService.InsertFile(file.Name, folder, cryptStream);
-        }
-        else
-        {
-            await storeService.InsertFile(file.Name, folder, stream);
-        }
     }
 }

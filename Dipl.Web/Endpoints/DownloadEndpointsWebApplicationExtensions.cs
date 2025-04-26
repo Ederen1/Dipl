@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using Dipl.Business;
 using Dipl.Business.Entities;
@@ -26,13 +27,12 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder not found or empty");
             }
 
-            if (!await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
             context.Response.Headers.ContentType = "application/zip";
-            
             
             using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
             try
@@ -75,14 +75,15 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link not found in database");
             }
             
-            if (!await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
-            
+            var timestamp = Stopwatch.GetTimestamp();
             try
             {
                 await using var baseFile = await storeService.GetFile($"{link.LinkId}/{fileName}");
+                context.Response.Headers.ContentLength = baseFile.Length;
                 if (link.AesIV is not null)
                 {
                     await using var cryptoStream =
@@ -102,6 +103,8 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Loading from storage failed");
             }
 
+            logger.LogWarning("Time elapsed {}", Stopwatch.GetElapsedTime(timestamp));
+            
             return Results.Empty;
         });
 
@@ -124,17 +127,16 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Upload slot not found for link");
             }
 
-            if (!await LinkSecurityService.PasswordMatchesLink(link, password!))
-                return Results.Unauthorized();
-            
-            if (!await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
-
-            await using var baseFile = await storeService.GetFile($"{linkId}/{slotId}/{fileName}");
+            
             try
             {
+                await using var baseFile = await storeService.GetFile($"{linkId}/{slotId}/{fileName}");
+                context.Response.Headers.ContentLength = baseFile.Length;
+                
                 if (link.AesIV is not null)
                 {
                     await using var cryptoStream =
@@ -153,8 +155,6 @@ public static class DownloadEndpointsWebApplicationExtensions
                 app.Logger.LogError("Loading file from storage failed, {}", e);
                 return Results.NotFound("Loading from storage failed");
             }
-
-
 
             return Results.Empty;
         });
@@ -186,7 +186,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder does not exist or is empty");
             }
             
-            if (!await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);

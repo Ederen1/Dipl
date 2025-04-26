@@ -15,6 +15,7 @@
 @inject IConfiguration Configuration
 @inject IStoreService StoreService
 @inject UserAuthenticationService UserAuthentication
+@inject IJSRuntime JsRuntime
 
 
 <Container>
@@ -175,7 +176,7 @@
         _closed = Slot.Uploaded != null;
         _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
     }
-
+    
     private async Task Submit()
     {
         if (ValidateFiles() is { } errorMessage)

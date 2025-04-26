@@ -10,10 +10,14 @@
             <Span TextColor="TextColor.Muted">Drag and drop files or folders here. Or...</Span>
         </div>
 
-        <div class="w-100 d-flex justify-content-center lowest">
-            <Span TextColor="TextColor.Muted">File types limited to: @string.Join(", ", Accept)</Span>
-        </div>
-
+        @if (Accept.Length > 0)
+        {
+            <div class="w-100 d-flex justify-content-center lowest">
+                <Span TextColor="TextColor.Muted">File types limited to: @string.Join(", ", Accept)</Span>
+            </div>
+    
+        }
+        
 
         <div class="d-flex gap-2 justify-content-center mx-auto">
             <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
@@ -39,11 +43,7 @@
                             </Button>
                         }
                     </Div>
-                    @{ var fileProgress = _progress.GetValueOrDefault(file, -1); }
-                    @if (fileProgress != -1)
-                    {
-                        <Progress Value="@fileProgress"></Progress>
-                    }
+                    <Progress Max="100" ElementId="@("js-progress-" + file.Name)"></Progress>
                 </CardText>
             </CardBody>
         </Card>
@@ -70,7 +70,7 @@
         </Card>
     }
 
-    <FileEdit Filter="@string.Join(',', Accept)" @ref="_fileEdit" Changed="OnFileChange" Written="Written" Multiple
+    <FileEdit Filter="@string.Join(',', Accept)" @ref="_fileEdit" Changed="OnFileChange" Multiple
               Directory="_pickingDirectory"/>
 </div>
 
@@ -96,10 +96,9 @@
 
     private FileEdit _fileEdit = null!;
     private string _disabledClass = "";
-    private readonly Dictionary<IFileEntry, int> _progress = [];
-
+    
     private bool _pickingDirectory = true;
-
+    
     private async Task AddFile()
     {
         _pickingDirectory = false;
@@ -136,7 +135,6 @@
     private async Task OnFileChange(FileChangedEventArgs e)
     {
         List<IFileEntry> append = [];
-
         // Replace values
         foreach (var file in e.Files)
         {
@@ -156,17 +154,6 @@
         Value.AddRange(append);
         await ValueChanged.InvokeAsync(Value);
         await DeleteOnlyValueChanged.InvokeAsync(DeleteOnlyValue);
-    }
-
-    private void Written(FileWrittenEventArgs e)
-    {
-        if (e.Position == e.File.Size)
-        {
-            _progress.Remove(e.File);
-            return;
-        }
-
-        _progress[e.File] = (int)((double)e.Position / e.File.Size * 100);
     }
 
     protected override void OnParametersSet()

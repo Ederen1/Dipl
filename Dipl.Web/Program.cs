@@ -10,6 +10,7 @@ using Dipl.Common.Configs;
 using Dipl.Web.Components;
 using Dipl.Web.Endpoints;
 using Dipl.Web.Extensions;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,15 @@ builder.Services.AddBlazorise(options => { options.Immediate = true; }).AddBoots
 
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+
+builder.WebHost.ConfigureKestrel(servecrOptions =>
+{
+    servecrOptions.Limits.MaxRequestBodySize = null;
+});
+builder.Services.Configure<FormOptions>(x =>
+{
+    x.MultipartBodyLengthLimit = long.MaxValue;
+});
 
 builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
@@ -106,5 +116,6 @@ using (var scope = app.Services.CreateScope())
 
 app.MapLoginEndpoints();
 app.MapDownloadEndpoints();
+app.MapUploadEncpoints();
 
 app.Run();
