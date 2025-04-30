@@ -245,7 +245,7 @@
     private async Task DownloadFolder(Guid linkId, Guid? slotId)
     {
         var url = slotId is null ? $"/download/fromUpload/{linkId}" : $"/download/fromRequest/{linkId}/{slotId}";
-        var passwordProtected = slotId is null ? UploadLinks.First(x => x.LinkId == linkId).AesIV is not null : RequestLinks.First(x => x.LinkId == linkId).AesIV is not null;
+        var passwordProtected = slotId is null ? UploadLinks.First(x => x.LinkId == linkId).Salt is not null : RequestLinks.First(x => x.LinkId == linkId).Salt is not null;
         if (passwordProtected)
         {
             _downloadWithPasswordModal.DownloadUrl = url;

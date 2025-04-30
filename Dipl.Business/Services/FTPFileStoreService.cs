@@ -16,6 +16,7 @@ public class FTPFileStoreService : IStoreService
         _client = new AsyncFtpClient(options.Value.Host, options.Value.Username, options.Value.Password,
             options.Value.Port ?? 0);
 
+        _client.Config.EncryptionMode = FtpEncryptionMode.Explicit;
         BasePath = options.Value.BasePath;
         _client.AutoConnect();
     }

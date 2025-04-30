@@ -59,7 +59,7 @@ public static class UploadEndpointsWebApplicationExtensions
             foreach (var file in form.Files)
             {
                 await using var stream = file.OpenReadStream();
-                if (baseLink.Salt is not null)
+                if (baseLink.VerifierSalt is not null)
                 {
                     await using var cryptStream = await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
                     await storeService.InsertFile(file.FileName, folder, cryptStream);
@@ -70,7 +70,8 @@ public static class UploadEndpointsWebApplicationExtensions
                 }
 
             }
-            
+
+            await dbContext.SaveChangesAsync(cancellationToken);
             
             return Results.Ok();   
         });

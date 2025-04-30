@@ -103,7 +103,7 @@
 
             var currentUser = await UserAuthentication.GetUserInfo();
             IsTheRightUser = currentUser?.UserId == slot.RequestLink.CreatedById;
-            IsPasswordProtected = slot.RequestLink.AesIV is not null;
+            IsPasswordProtected = slot.RequestLink.Salt is not null;
         }
         else
         {
@@ -112,7 +112,7 @@
                 throw new Exception("Link not found");
 
             IsTheRightUser = true;
-            IsPasswordProtected = uploadLink.AesIV is not null;
+            IsPasswordProtected = uploadLink.Salt is not null;
         }
 
         Files = await StoreService.ListFolder($"{LinkId}/{SlotId}") ?? [];

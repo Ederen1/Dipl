@@ -18,7 +18,7 @@ public abstract class BaseLink
 
     public DateTime Created { get; set; } = DateTime.Now;
     
-    public byte[]? Salt { get; set; }
+    public byte[]? VerifierSalt { get; set; }
     public byte[]? VerifierHash { get; set; }
-    public byte[]? AesIV { get; set; }
+    public byte[]? Salt { get; set; }
 }

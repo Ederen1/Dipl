@@ -27,7 +27,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder not found or empty");
             }
 
-            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
@@ -43,7 +43,7 @@ public static class DownloadEndpointsWebApplicationExtensions
 
                     var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
                     await using var entryStream = entry.Open();
-                    if (link.AesIV is not null)
+                    if (link.Salt is not null)
                     {
                         await using var cryptoStream =
                             await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
@@ -75,7 +75,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link not found in database");
             }
             
-            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
@@ -83,8 +83,7 @@ public static class DownloadEndpointsWebApplicationExtensions
             try
             {
                 await using var baseFile = await storeService.GetFile($"{link.LinkId}/{fileName}");
-                context.Response.Headers.ContentLength = baseFile.Length;
-                if (link.AesIV is not null)
+                if (link.Salt is not null)
                 {
                     await using var cryptoStream =
                         await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
@@ -93,6 +92,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 }
                 else
                 {
+                    context.Response.Headers.ContentLength = baseFile.Length;
                     await using var writer = context.Response.BodyWriter.AsStream();
                     await baseFile.CopyToAsync(writer);
                 }
@@ -127,7 +127,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Upload slot not found for link");
             }
 
-            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
@@ -135,9 +135,8 @@ public static class DownloadEndpointsWebApplicationExtensions
             try
             {
                 await using var baseFile = await storeService.GetFile($"{linkId}/{slotId}/{fileName}");
-                context.Response.Headers.ContentLength = baseFile.Length;
                 
-                if (link.AesIV is not null)
+                if (link.Salt is not null)
                 {
                     await using var cryptoStream =
                         await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
@@ -146,6 +145,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 }
                 else
                 {
+                    context.Response.Headers.ContentLength = baseFile.Length;
                     await using var writer = context.Response.BodyWriter.AsStream();
                     await baseFile.CopyToAsync(writer);
                 }
@@ -186,7 +186,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder does not exist or is empty");
             }
             
-            if (link.AesIV is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
@@ -205,7 +205,7 @@ public static class DownloadEndpointsWebApplicationExtensions
 
                     var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
                     await using var entryStream = entry.Open();
-                    if (link.AesIV is not null)
+                    if (link.Salt is not null)
                     {
                         await using var cryptoStream =
                             await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
