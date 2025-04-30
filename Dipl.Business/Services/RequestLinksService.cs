@@ -37,7 +37,7 @@ public class RequestLinksService(
         };
 
         if (createModel.Password is not null)
-            await LinkSecurityService.SetupSecureLinkAsync(createModel.Password, link);
+            LinkSecurityService.SetupSecureLinkAsync(createModel.Password, link);
 
         await storeService.CreateDirectoryIfNotExists(link.LinkId.ToString());
 
