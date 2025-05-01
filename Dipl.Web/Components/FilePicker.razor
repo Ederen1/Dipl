@@ -122,6 +122,7 @@
     private async Task RemoveFile(IFileEntry file)
     {
         Value.Remove(file);
+        await JSRuntime.InvokeVoidAsync("removeFileFromGlobalStore", file.Name);
         await ValueChanged.InvokeAsync(Value);
     }
 
