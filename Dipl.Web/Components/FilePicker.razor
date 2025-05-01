@@ -15,9 +15,8 @@
             <div class="w-100 d-flex justify-content-center lowest">
                 <Span TextColor="TextColor.Muted">File types limited to: @string.Join(", ", Accept)</Span>
             </div>
-    
         }
-        
+
 
         <div class="d-flex gap-2 justify-content-center mx-auto">
             <Button Type="ButtonType.Button" Color="Color.Primary" Clicked="AddFile">Add file
@@ -96,9 +95,9 @@
 
     private FileEdit _fileEdit = null!;
     private string _disabledClass = "";
-    
+
     private bool _pickingDirectory = true;
-    
+
     private async Task AddFile()
     {
         _pickingDirectory = false;

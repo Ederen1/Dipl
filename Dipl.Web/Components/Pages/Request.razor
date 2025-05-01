@@ -1,6 +1,5 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
 @using System.Security.Cryptography
-@using System.Xml.Schema
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
@@ -176,7 +175,7 @@
         _closed = Slot.Uploaded != null;
         _alreadyPresentFiles = (await StoreService.ListFolder($"{Slot.RequestLinkId}/{Slot.RequestLinkUploadSlotId}") ?? []).ToList();
     }
-    
+
     private async Task Submit()
     {
         if (ValidateFiles() is { } errorMessage)
@@ -184,7 +183,7 @@
             filePickerValidationMessage = errorMessage;
             return;
         }
-        
+
         if (Slot.RequestLink.VerifierHash is not null)
             await _modalRef.Show();
         else
@@ -222,7 +221,7 @@
 
         return null;
     }
-    
+
 
     private async Task HideModal()
     {
@@ -241,13 +240,12 @@
                 _closed = true;
                 Password = "";
             }
-            catch(CryptographicException e)
+            catch (CryptographicException e)
             {
                 await _modalRef.Show();
                 _passwordValidation.NotifyValidationStatusChanged(ValidationStatus.Error, ["Password does not match"]);
             }
         }
-        
     }
 
 }

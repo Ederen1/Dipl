@@ -15,7 +15,7 @@ public class RequestLinksService(
     {
         if (createModel.Password != createModel.MatchingPassword)
             throw new Exception("Passwords do not match");
-        
+
         var createdBy = await usersService.GetCurrentUser();
         var link = new RequestLink
         {

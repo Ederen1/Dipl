@@ -1,9 +1,7 @@
-using Blazorise;
 using Dipl.Business;
 using Dipl.Business.Entities;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Web.Endpoints;
@@ -12,7 +10,8 @@ public static class UploadEndpointsWebApplicationExtensions
 {
     public static void MapUploadEncpoints(this WebApplication app)
     {
-        app.MapPost("/uploadFiles", async (HttpRequest req, AppDbContext dbContext, IStoreService storeService, CancellationToken cancellationToken) =>
+        app.MapPost("/uploadFiles", async (HttpRequest req, AppDbContext dbContext, IStoreService storeService,
+            CancellationToken cancellationToken) =>
         {
             if (!req.HasFormContentType)
                 return Results.BadRequest();
@@ -26,7 +25,8 @@ public static class UploadEndpointsWebApplicationExtensions
             BaseLink baseLink;
             if (string.IsNullOrEmpty(slotId))
             {
-                var link = await dbContext.UploadLinks.FirstOrDefaultAsync(x => x.LinkId == Guid.Parse(linkId!), cancellationToken: cancellationToken);
+                var link = await dbContext.UploadLinks.FirstOrDefaultAsync(x => x.LinkId == Guid.Parse(linkId!),
+                    cancellationToken);
                 if (link is null)
                     return Results.NotFound("Link not found");
 
@@ -35,7 +35,8 @@ public static class UploadEndpointsWebApplicationExtensions
             }
             else
             {
-                var link = await dbContext.RequestLinks.FirstOrDefaultAsync(x => x.LinkId == Guid.Parse(linkId!), cancellationToken: cancellationToken);
+                var link = await dbContext.RequestLinks.FirstOrDefaultAsync(x => x.LinkId == Guid.Parse(linkId!),
+                    cancellationToken);
                 if (link is null)
                     return Results.NotFound("Link not found");
 
@@ -46,34 +47,32 @@ public static class UploadEndpointsWebApplicationExtensions
                 folder = $"{link.LinkId}/{slot.RequestLinkUploadSlotId}";
                 baseLink = link;
             }
-            
+
             if (!string.IsNullOrWhiteSpace(password))
-            {
                 if (!await LinkSecurityService.PasswordMatchesLink(baseLink, password))
                     return Results.Unauthorized();
-            }
 
             if (form.Files.Count == 0)
                 return Results.BadRequest();
-            
+
             foreach (var file in form.Files)
             {
                 await using var stream = file.OpenReadStream();
                 if (baseLink.VerifierSalt is not null)
                 {
-                    await using var cryptStream = await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
+                    await using var cryptStream =
+                        await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
                     await storeService.InsertFile(file.FileName, folder, cryptStream);
                 }
                 else
                 {
                     await storeService.InsertFile(file.FileName, folder, stream);
                 }
-
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
-            
-            return Results.Ok();   
+
+            return Results.Ok();
         });
     }
 }

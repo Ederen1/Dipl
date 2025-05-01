@@ -17,7 +17,7 @@ public abstract class BaseLink
     public virtual User CreatedBy { get; set; } = null!;
 
     public DateTime Created { get; set; } = DateTime.Now;
-    
+
     public byte[]? VerifierSalt { get; set; }
     public byte[]? VerifierHash { get; set; }
     public byte[]? Salt { get; set; }

@@ -6,13 +6,13 @@ namespace Dipl.Web.Models;
 
 public class FileUploadModel
 {
+    public string MatchingPassword = "";
+    public string Password = "";
     public string? GuestEmail { get; set; }
     public List<string> EmailTo { get; set; } = [];
     public string LinkTitle { get; set; } = null!;
     public string MessageForUser { get; set; } = "";
     public List<IFileEntry> FilesToUpload { get; set; } = [];
-    public string Password = "";
-    public string MatchingPassword = "";
 
     public CreateUploadLinkModel MapToCreateUploadModel(string? userName)
     {

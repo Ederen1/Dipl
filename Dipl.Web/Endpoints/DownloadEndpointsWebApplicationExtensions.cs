@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using Dipl.Business;
-using Dipl.Business.Entities;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Util;
@@ -23,17 +22,15 @@ public static class DownloadEndpointsWebApplicationExtensions
 
             var files = await storeService.ListFolder(link.LinkId.ToString());
             if (files is null)
-            {
                 return Results.NotFound("Link folder not found or empty");
-            }
 
             if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
-            
+
             var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
             context.Response.Headers.ContentType = "application/zip";
-            
+
             using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
             try
             {
@@ -71,10 +68,8 @@ public static class DownloadEndpointsWebApplicationExtensions
         {
             var link = await dbContext.UploadLinks.FindAsync(linkId);
             if (link is null)
-            {
                 return Results.NotFound("Link not found in database");
-            }
-            
+
             if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
@@ -104,7 +99,7 @@ public static class DownloadEndpointsWebApplicationExtensions
             }
 
             logger.LogWarning("Time elapsed {}", Stopwatch.GetElapsedTime(timestamp));
-            
+
             return Results.Empty;
         });
 
@@ -129,13 +124,13 @@ public static class DownloadEndpointsWebApplicationExtensions
 
             if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
-            
+
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
-            
+
             try
             {
                 await using var baseFile = await storeService.GetFile($"{linkId}/{slotId}/{fileName}");
-                
+
                 if (link.Salt is not null)
                 {
                     await using var cryptoStream =
@@ -185,7 +180,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 app.Logger.LogError("Link folder '{}/{}' does not exist or is empty", linkId, slotId);
                 return Results.NotFound("Link folder does not exist or is empty");
             }
-            
+
             if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 

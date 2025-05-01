@@ -66,7 +66,8 @@
                         <TableRowCell>@file.Name</TableRowCell>
                         <TableRowCell>@FileUtils.BytesToString(file.Size)</TableRowCell>
                         <TableRowCell Style="width: 0;" Class="text-nowrap">
-                            <Button Type="ButtonType.Link" Color="Color.Primary" Clicked="() => DownloadFile(file.Name)">
+                            <Button Type="ButtonType.Link" Color="Color.Primary"
+                                    Clicked="() => DownloadFile(file.Name)">
                                 <Icon Name="IconName.Download" Class="me-2"/>
                                 Download
                             </Button>
@@ -78,7 +79,7 @@
     }
 </Container>
 
-<DownloadWithPasswordModal @ref="_downloadWithPasswordModal"></DownloadWithPasswordModal> 
+<DownloadWithPasswordModal @ref="_downloadWithPasswordModal"></DownloadWithPasswordModal>
 
 @code {
 
@@ -92,7 +93,7 @@
     private bool IsTheRightUser { get; set; }
     private bool IsPasswordProtected { get; set; }
     private DownloadWithPasswordModal _downloadWithPasswordModal = null!;
-    
+
     protected override async Task OnInitializedAsync()
     {
         if (SlotId is not null)
@@ -107,7 +108,7 @@
         }
         else
         {
-            var uploadLink = await DbContext.UploadLinks.FirstOrDefaultAsync(x => x.LinkId == LinkId); 
+            var uploadLink = await DbContext.UploadLinks.FirstOrDefaultAsync(x => x.LinkId == LinkId);
             if (uploadLink is null)
                 throw new Exception("Link not found");
 
@@ -136,7 +137,7 @@
             await JsRuntime.InvokeVoidAsync("window.downloadPasswordProtectedFile", url);
         }
     }
-    
+
     private async Task DownloadFolder()
     {
         var url = SlotId is null ? $"/download/fromUpload/{LinkId}" : $"/download/fromRequest/{LinkId}/{SlotId}";

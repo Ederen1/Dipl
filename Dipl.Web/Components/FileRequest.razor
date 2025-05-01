@@ -43,7 +43,7 @@
                           Placeholder="Message for user..."></MemoEdit>
             </FieldBody>
         </Field>
-        
+
         @if (Configuration.GetValue<bool>("EncryptedRequests"))
         {
             <Fields>
@@ -51,7 +51,8 @@
                     <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
                         <FieldLabel>Password</FieldLabel>
                         <FieldBody>
-                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.Password" Placeholder="Password..." Disabled="_closed">
+                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.Password"
+                                      Placeholder="Password..." Disabled="_closed">
                                 <Feedback>
                                     <ValidationError>Password must be at least 8 letters long</ValidationError>
                                 </Feedback>
@@ -64,7 +65,8 @@
                     <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
                         <FieldLabel>Confirm password</FieldLabel>
                         <FieldBody>
-                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.MatchingPassword" Placeholder="Confirm password..." Disabled="_closed">
+                            <TextEdit Role="TextRole.Password" @bind-Text="@_createModel.MatchingPassword"
+                                      Placeholder="Confirm password..." Disabled="_closed">
                                 <Feedback>
                                     <ValidationError>Passwords do not match</ValidationError>
                                 </Feedback>
@@ -72,7 +74,7 @@
                         </FieldBody>
                     </Field>
                 </Validation>
-            </Fields>   
+            </Fields>
         }
 
         <Fields>
@@ -193,13 +195,13 @@ else
         var split = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         _createModel.AllowedExtensions = split;
     }
-    
+
     private static void ValidatePassword(ValidatorEventArgs e)
     {
         var pass = Convert.ToString(e.Value);
         if (string.IsNullOrEmpty(pass))
             return;
-        
+
         if (pass?.Length < 8)
             e.Status = ValidationStatus.Error;
     }
@@ -209,7 +211,7 @@ else
         var pass = Convert.ToString(e.Value);
         if (string.IsNullOrEmpty(_createModel.Password) && string.IsNullOrEmpty(pass))
             return;
-        
+
         if (pass?.Length < 8 && _createModel.Password != pass)
             e.Status = ValidationStatus.Error;
     }

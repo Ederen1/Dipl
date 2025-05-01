@@ -83,13 +83,14 @@ else
                 </FieldBody>
             </Field>
         </Validation>
-        
+
         <Fields>
             <Validation Validator="ValidatePassword">
                 <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
                     <FieldLabel>Password</FieldLabel>
                     <FieldBody>
-                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.Password" Placeholder="Password..." Disabled="_disableEdit || _currentUploadLink is not null">
+                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.Password" Placeholder="Password..."
+                                  Disabled="_disableEdit || _currentUploadLink is not null">
                             <Feedback>
                                 <ValidationError>Password must be at least 8 letters long</ValidationError>
                             </Feedback>
@@ -102,7 +103,9 @@ else
                 <Field ColumnSize="ColumnSize.Is6.OnDesktop.Is12.OnMobile">
                     <FieldLabel>Confirm password</FieldLabel>
                     <FieldBody>
-                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.MatchingPassword" Placeholder="Confirm password..." Disabled="_disableEdit || _currentUploadLink is not null">
+                        <TextEdit Role="TextRole.Password" @bind-Text="@_model.MatchingPassword"
+                                  Placeholder="Confirm password..."
+                                  Disabled="_disableEdit || _currentUploadLink is not null">
                             <Feedback>
                                 <ValidationError>Passwords do not match</ValidationError>
                             </Feedback>
@@ -136,7 +139,9 @@ else
         }
         else if (!_closed)
         {
-            <Button Disabled="_submitDisabled" Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit" Clicked="Submit">Submit</Button>
+            <Button Disabled="_submitDisabled" Width="Width.Is100" Color="Color.Primary" Type="ButtonType.Submit"
+                    Clicked="Submit">Submit
+            </Button>
         }
 
 
@@ -208,7 +213,7 @@ else
         var pass = Convert.ToString(e.Value);
         if (string.IsNullOrEmpty(pass))
             return;
-        
+
         if (pass?.Length < 8)
             e.Status = ValidationStatus.Error;
     }
@@ -218,7 +223,7 @@ else
         var pass = Convert.ToString(e.Value);
         if (string.IsNullOrEmpty(_model.Password) && string.IsNullOrEmpty(pass))
             return;
-        
+
         if (pass?.Length < 8 && _model.Password != pass)
             e.Status = ValidationStatus.Error;
     }

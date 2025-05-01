@@ -1,5 +1,4 @@
-﻿using System.Security.Cryptography;
-using Blazorise;
+﻿using Blazorise;
 using Dipl.Business;
 using Dipl.Business.EmailModels;
 using Dipl.Business.Entities;
@@ -39,7 +38,7 @@ public class FileManagerService(
 
         if (uploadLink is null)
             await dbContext.UploadLinks.AddAsync(link, cancellationToken);
-        
+
         var folder = link.LinkId.ToString();
         if (uploadLink is not null)
             await DeleteFilesBeforeInsert(folder, alreadyPresentFiles);
@@ -54,7 +53,7 @@ public class FileManagerService(
 
         await emailSenderService.NotifyUserUploaded(link, mappedModel, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        
+
         return (link, folderContents.ToList());
     }
 
@@ -65,7 +64,7 @@ public class FileManagerService(
         var dir = link.LinkId + "/" + slot.RequestLinkUploadSlotId;
 
         await DeleteFilesBeforeInsert(dir, alreadyPresentFiles);
-        
+
         var files = await UploadFiles(link.LinkId, slot.RequestLinkUploadSlotId, password, cancellationToken);
         slot.Uploaded = DateTime.Now;
 
@@ -105,10 +104,11 @@ public class FileManagerService(
             await storeService.DeleteFile(file.Name, folder);
     }
 
-    private async Task<List<FileInfo>> UploadFiles(Guid linkId, Guid? slotId, string? password, CancellationToken cancellationToken)
+    private async Task<List<FileInfo>> UploadFiles(Guid linkId, Guid? slotId, string? password,
+        CancellationToken cancellationToken)
     {
         await jsRuntime.InvokeVoidAsync("window.uploadFiles", cancellationToken, linkId, slotId, password);
-        
+
         var folder = slotId is null ? linkId.ToString() : $"{linkId}/{slotId}";
         return (await storeService.ListFolder(folder))?.ToList() ?? [];
     }

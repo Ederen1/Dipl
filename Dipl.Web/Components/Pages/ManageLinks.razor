@@ -155,7 +155,8 @@
                             <CardHeader>
                                 <CardTitle Size="3">
                                     <Anchor To="@("/link/" + link.LinkId)">@link.LinkTitle</Anchor>
-                                    <Button Color="Color.Light" Margin="Margin.Is2.FromStart" Clicked="() => DownloadFolder(link.LinkId, null)" >
+                                    <Button Color="Color.Light" Margin="Margin.Is2.FromStart"
+                                            Clicked="() => DownloadFolder(link.LinkId, null)">
                                         <Icon IconSize="IconSize.Small" Name="IconName.Download"></Icon>
                                     </Button>
                                 </CardTitle>
@@ -202,7 +203,7 @@
 
     private async Task ReloadData()
     {
-         RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderByDescending(x => x.Created).ToListAsync();
+        RequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderByDescending(x => x.Created).ToListAsync();
         UploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).OrderByDescending(x => x.Created).ToListAsync();
     }
 
