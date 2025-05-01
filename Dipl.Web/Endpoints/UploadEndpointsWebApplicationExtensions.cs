@@ -40,7 +40,7 @@ public static class UploadEndpointsWebApplicationExtensions
                 if (link is null)
                     return Results.NotFound("Link not found");
 
-                var slot = link.UploadSlots.FirstOrDefault(x => x.RequestLinkUploadSlotId == slotId);
+                var slot = link.UploadSlots.FirstOrDefault(x => x.RequestLinkUploadSlotId == Guid.Parse(slotId!));
                 if (slot is null)
                     return Results.NotFound("Slot not found");
 
@@ -58,7 +58,7 @@ public static class UploadEndpointsWebApplicationExtensions
             foreach (var file in form.Files)
             {
                 await using var stream = file.OpenReadStream();
-                if (baseLink.VerifierSalt is not null)
+                if (baseLink.Salt is not null)
                 {
                     await using var cryptStream =
                         await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
