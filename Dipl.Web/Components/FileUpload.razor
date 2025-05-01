@@ -136,6 +136,7 @@ else
             <Button Width="Width.Is100" Color="Color.Success"
                     Clicked="() => { _closed = false; _disableEdit = false; }">Reopen
             </Button>
+            <Button Width="Width.Is100" Margin="Margin.Is2.FromTop" Color="Color.Primary" Clicked="GoBack">Go back</Button>
         }
         else if (!_closed)
         {
@@ -201,6 +202,10 @@ else
     {
         _closed = false;
         _model = new FileUploadModel();
+        _disableEdit = false;
+        _submitDisabled = false;
+        _currentUploadLink = null;
+        _alreadyPresentFiles = [];
     }
 
     private async Task CopyToClipboard()

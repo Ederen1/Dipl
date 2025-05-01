@@ -16,24 +16,24 @@
 <Container>
     <h1 class="mb-4">Link Management</h1>
 
-    <Tabs SelectedTab="@selectedTab" SelectedTabChanged="@OnSelectedTabChanged">
+    <Tabs SelectedTab="@_selectedTab" SelectedTabChanged="@OnSelectedTabChanged">
         <Items>
             <Tab Name="requestLinks">
-                <span><Icon Name="IconName.UserPlus"/> Request Links (@RequestLinks.Count())</span>
+                <span><Icon Name="IconName.UserPlus"/> Request Links (@_requestLinksCount)</span>
             </Tab>
             <Tab Name="uploadLinks">
-                <span><Icon Name="IconName.FileUpload"/> Upload Links (@UploadLinks.Count())</span>
+                <span><Icon Name="IconName.FileUpload"/> Upload Links (@_uploadLinksCount)</span>
             </Tab>
         </Items>
         <Content>
             <TabPanel Name="requestLinks">
-                @if (!RequestLinks.Any())
+                @if (_requestLinksCount == 0)
                 {
                     <div class="text-center py-8 text-muted">No request links found</div>
                 }
                 else
                 {
-                    @foreach (var link in RequestLinks)
+                    @foreach (var link in _currentRequestLinks)
                     {
                         <Card Margin="Margin.Is4.FromTop" Shadow="Shadow.Small">
                             <CardHeader>
@@ -97,7 +97,7 @@
                                     {
                                         var slotFiles = _slotFiles.GetValueOrDefault($"{link.LinkId}/{slot.RequestLinkUploadSlotId}");
                                         var totalSize = slotFiles?.Sum(f => f.Size) ?? 0;
-                                        
+
                                         <div class="d-flex align-items-center bg-light p-3 mb-2 rounded">
                                             <div class="d-flex flex-column flex-grow-1">
                                                 <div class="d-flex align-items-center gap-2 mb-1">
@@ -131,7 +131,8 @@
                                                 @if (slotFiles != null && slotFiles.Any())
                                                 {
                                                     <div>
-                                                        <div class="text-muted my-1">Total size: @FileUtils.BytesToString(totalSize)</div>
+                                                        <div class="text-muted my-1">Total
+                                                            size: @FileUtils.BytesToString(totalSize)</div>
                                                         <div class="small text-muted">
                                                             @string.Join(", ", slotFiles.Take(3).Select(f => f.Name))
                                                             @if (slotFiles.Length > 3)
@@ -160,20 +161,50 @@
                             </CardFooter>
                         </Card>
                     }
+
+                    <div class="d-flex justify-content-center mt-4">
+                        @{
+                            var totalRequestPages = (int)Math.Ceiling(_requestLinksCount / (double)PageSize);
+                        }
+                        @if (totalRequestPages > 1)
+                        {
+                            <Pagination>
+                                <PaginationItem Disabled="@(_requestLinksPage == 0)">
+                                    <PaginationLink Clicked="@(() => ChangePage(false, true))" Previous>
+                                        <Icon Name="IconName.ChevronLeft"/>
+                                    </PaginationLink>
+                                </PaginationItem>
+                                @for (var i = 0; i < totalRequestPages; i++)
+                                {
+                                    var pageNumber = i;
+                                    <PaginationItem Active="@(_requestLinksPage == pageNumber)">
+                                        <PaginationLink Clicked="@(() => ChangePage(pageNumber, true))">
+                                            @(pageNumber + 1)
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                }
+                                <PaginationItem Disabled="@(_requestLinksPage >= totalRequestPages - 1)">
+                                    <PaginationLink Clicked="@(() => ChangePage(true, true))" Next>
+                                        <Icon Name="IconName.ChevronRight"/>
+                                    </PaginationLink>
+                                </PaginationItem>
+                            </Pagination>
+                        }
+                    </div>
                 }
             </TabPanel>
             <TabPanel Name="uploadLinks">
-                @if (!UploadLinks.Any())
+                @if (_uploadLinksCount == 0)
                 {
                     <div class="text-center py-8 text-muted">No upload links found</div>
                 }
                 else
                 {
-                    @foreach (var link in UploadLinks)
+                    @foreach (var link in _currentUploadLinks)
                     {
                         var linkFiles = _linkFiles.GetValueOrDefault(link.LinkId.ToString());
                         var totalSize = linkFiles?.Sum(f => f.Size) ?? 0;
-                        
+
                         <Card Margin="Margin.Is4.FromTop" Shadow="Shadow.Small">
                             <CardHeader>
                                 <CardTitle Size="3">
@@ -193,7 +224,8 @@
                                 @if (linkFiles != null && linkFiles.Any())
                                 {
                                     <div>
-                                        <div class="text-muted mb-1">Total size: @FileUtils.BytesToString(totalSize)</div>
+                                        <div class="text-muted mb-1">Total
+                                            size: @FileUtils.BytesToString(totalSize)</div>
                                         <div class="small text-muted">
                                             @string.Join(", ", linkFiles.Take(3).Select(f => f.Name))
                                             @if (linkFiles.Length > 3)
@@ -213,6 +245,36 @@
                             </CardFooter>
                         </Card>
                     }
+
+                    <div class="d-flex justify-content-center mt-4">
+                        @{
+                            var totalUploadPages = (int)Math.Ceiling(_uploadLinksCount / (double)PageSize);
+                        }
+                        @if (totalUploadPages > 1)
+                        {
+                            <Pagination>
+                                <PaginationItem Disabled="@(_uploadLinksPage == 0)">
+                                    <PaginationLink Clicked="@(() => ChangePage(false, false))" Previous>
+                                        <Icon Name="IconName.ChevronLeft"/>
+                                    </PaginationLink>
+                                </PaginationItem>
+                                @for (var i = 0; i < totalUploadPages; i++)
+                                {
+                                    var pageNumber = i;
+                                    <PaginationItem Active="@(_uploadLinksPage == pageNumber)">
+                                        <PaginationLink Clicked="@(() => ChangePage(pageNumber, false))">
+                                            @(pageNumber + 1)
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                }
+                                <PaginationItem Disabled="@(_uploadLinksPage >= totalUploadPages - 1)">
+                                    <PaginationLink Clicked="@(() => ChangePage(true, false))" Next>
+                                        <Icon Name="IconName.ChevronRight"/>
+                                    </PaginationLink>
+                                </PaginationItem>
+                            </Pagination>
+                        }
+                    </div>
                 }
             </TabPanel>
         </Content>
@@ -222,11 +284,16 @@
 <DownloadWithPasswordModal @ref="_downloadWithPasswordModal"></DownloadWithPasswordModal>
 
 @code {
-    private string selectedTab = "requestLinks";
-    private User _currentUser;
+    private string _selectedTab = "requestLinks";
+    private User _currentUser = null!;
+    private int _requestLinksPage;
+    private int _uploadLinksPage;
+    private const int PageSize = 10;
 
-    private List<RequestLink> RequestLinks { get; set; } = [];
-    private List<UploadLink> UploadLinks { get; set; } = [];
+    private int _requestLinksCount;
+    private int _uploadLinksCount;
+    private List<RequestLink> _currentRequestLinks = [];
+    private List<UploadLink> _currentUploadLinks = [];
     private Dictionary<string, FileInfo[]> _slotFiles = new();
     private Dictionary<string, FileInfo[]> _linkFiles = new();
 
@@ -236,25 +303,113 @@
     protected override async Task OnInitializedAsync()
     {
         _currentUser = await UsersService.GetCurrentUser();
+        await LoadCounts();
         await ReloadData();
+    }
+
+    private async Task LoadCounts()
+    {
+        _requestLinksCount = await DbContext.RequestLinks
+            .CountAsync(link => link.CreatedById == _currentUser.UserId);
+        
+        _uploadLinksCount = await DbContext.UploadLinks
+            .CountAsync(link => link.CreatedById == _currentUser.UserId);
+    }
+
+    private async Task ChangePage(bool next, bool isRequestLinks)
+    {
+        if (isRequestLinks)
+        {
+            var maxPage = (int)Math.Ceiling(_requestLinksCount / (double)PageSize) - 1;
+            if (next && _requestLinksPage < maxPage)
+                _requestLinksPage++;
+            else if (!next && _requestLinksPage > 0)
+                _requestLinksPage--;
+            await LoadRequestLinksPage();
+        }
+        else
+        {
+            var maxPage = (int)Math.Ceiling(_uploadLinksCount / (double)PageSize) - 1;
+            if (next && _uploadLinksPage < maxPage)
+                _uploadLinksPage++;
+            else if (!next && _uploadLinksPage > 0)
+                _uploadLinksPage--;
+            await LoadUploadLinksPage();
+        }
+    }
+
+    private async Task ChangePage(int pageNumber, bool isRequestLinks)
+    {
+        if (isRequestLinks)
+        {
+            _requestLinksPage = pageNumber;
+            await LoadRequestLinksPage();
+        }
+        else
+        {
+            _uploadLinksPage = pageNumber;
+            await LoadUploadLinksPage();
+        }
+    }
+
+    private async Task OnSelectedTabChanged(string name)
+    {
+        _selectedTab = name;
+        // Reset pagination when switching tabs
+        if (name == "requestLinks")
+        {
+            _requestLinksPage = 0;
+            await LoadRequestLinksPage();
+        }
+        else
+        {
+            _uploadLinksPage = 0;
+            await LoadUploadLinksPage();
+        }
     }
 
     private async Task ReloadData()
     {
-        RequestLinks = await DbContext.RequestLinks
+        await LoadCounts();
+        if (_selectedTab == "uploadLinks")
+        {
+            await LoadUploadLinksPage();
+        }
+        else
+        {
+            await LoadRequestLinksPage();
+        }
+    }
+
+    private async Task LoadRequestLinksPage()
+    {
+        _currentRequestLinks = await DbContext.RequestLinks
             .Where(link => link.CreatedById == _currentUser.UserId)
             .Include(requestLink => requestLink.UploadSlots)
             .OrderByDescending(x => x.Created)
-            .ToListAsync();
-            
-        UploadLinks = await DbContext.UploadLinks
-            .Where(link => link.CreatedById == _currentUser.UserId)
-            .OrderByDescending(x => x.Created)
+            .Skip(_requestLinksPage * PageSize)
+            .Take(PageSize)
             .ToListAsync();
 
-        // Load files for request links
+        await LoadRequestLinksFileInfo();
+    }
+
+    private async Task LoadUploadLinksPage()
+    {
+        _currentUploadLinks = await DbContext.UploadLinks
+            .Where(link => link.CreatedById == _currentUser.UserId)
+            .OrderByDescending(x => x.Created)
+            .Skip(_uploadLinksPage * PageSize)
+            .Take(PageSize)
+            .ToListAsync();
+
+        await LoadUploadLinksFileInfo();
+    }
+
+    private async Task LoadRequestLinksFileInfo()
+    {
         _slotFiles.Clear();
-        foreach (var link in RequestLinks)
+        foreach (var link in _currentRequestLinks)
         {
             foreach (var slot in link.UploadSlots.Where(s => s.Uploaded.HasValue))
             {
@@ -265,10 +420,12 @@
                 }
             }
         }
+    }
 
-        // Load files for upload links
+    private async Task LoadUploadLinksFileInfo()
+    {
         _linkFiles.Clear();
-        foreach (var link in UploadLinks.Where(l => l.Uploaded.HasValue))
+        foreach (var link in _currentUploadLinks.Where(l => l.Uploaded.HasValue))
         {
             var files = await StoreService.ListFolder(link.LinkId.ToString());
             if (files != null)
@@ -276,11 +433,6 @@
                 _linkFiles[link.LinkId.ToString()] = files;
             }
         }
-    }
-
-    private void OnSelectedTabChanged(string name)
-    {
-        selectedTab = name;
     }
 
     private async Task RemoveRequestLink(RequestLink link)
@@ -317,7 +469,9 @@
     private async Task DownloadFolder(Guid linkId, Guid? slotId)
     {
         var url = slotId is null ? $"/download/fromUpload/{linkId}" : $"/download/fromRequest/{linkId}/{slotId}";
-        var passwordProtected = slotId is null ? UploadLinks.First(x => x.LinkId == linkId).Salt is not null : RequestLinks.First(x => x.LinkId == linkId).Salt is not null;
+        var passwordProtected = slotId is null 
+            ? _currentUploadLinks.First(x => x.LinkId == linkId).Salt is not null 
+            : _currentRequestLinks.First(x => x.LinkId == linkId).Salt is not null;
         if (passwordProtected)
         {
             _downloadWithPasswordModal.DownloadUrl = url;

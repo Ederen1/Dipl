@@ -146,6 +146,7 @@
                 if (xhr.status >= 200 && xhr.status < 300) {
                     console.log('Upload complete:', xhr.responseText);
                     resolve()
+                    window.globalFileUplaodStore = [];
                 } else {
                     console.error('Upload failed with status', xhr.status);
                     reject()
