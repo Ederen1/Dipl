@@ -27,7 +27,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder not found or empty");
             }
 
-            if (link.Salt is not null && !LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
@@ -46,7 +46,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                     if (link.Salt is not null)
                     {
                         await using var cryptoStream =
-                            LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
+                            await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
                         await cryptoStream.CopyToAsync(entryStream);
                     }
                     else
@@ -75,7 +75,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link not found in database");
             }
             
-            if (link.Salt is not null && !LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
@@ -86,7 +86,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 if (link.Salt is not null)
                 {
                     await using var cryptoStream =
-                        LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
+                        await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
                     await using var writer = context.Response.BodyWriter.AsStream();
                     await cryptoStream.CopyToAsync(writer);
                 }
@@ -127,7 +127,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Upload slot not found for link");
             }
 
-            if (link.Salt is not null && !LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
             
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{fileName}\";";
@@ -139,7 +139,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 if (link.Salt is not null)
                 {
                     await using var cryptoStream =
-                        LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
+                        await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
                     await using var writer = context.Response.BodyWriter.AsStream();
                     await cryptoStream.CopyToAsync(writer);
                 }
@@ -186,7 +186,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.NotFound("Link folder does not exist or is empty");
             }
             
-            if (link.Salt is not null && !LinkSecurityService.PasswordMatchesLink(link, password!))
+            if (link.Salt is not null && !await LinkSecurityService.PasswordMatchesLink(link, password!))
                 return Results.Unauthorized();
 
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
@@ -208,7 +208,7 @@ public static class DownloadEndpointsWebApplicationExtensions
                     if (link.Salt is not null)
                     {
                         await using var cryptoStream =
-                            LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
+                            await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
                         await cryptoStream.CopyToAsync(entryStream);
                     }
                     else

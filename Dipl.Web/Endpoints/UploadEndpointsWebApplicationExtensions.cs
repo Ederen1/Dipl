@@ -49,7 +49,7 @@ public static class UploadEndpointsWebApplicationExtensions
             
             if (!string.IsNullOrWhiteSpace(password))
             {
-                if (!LinkSecurityService.PasswordMatchesLink(baseLink, password))
+                if (!await LinkSecurityService.PasswordMatchesLink(baseLink, password))
                     return Results.Unauthorized();
             }
 
@@ -61,13 +61,14 @@ public static class UploadEndpointsWebApplicationExtensions
                 await using var stream = file.OpenReadStream();
                 if (baseLink.VerifierSalt is not null)
                 {
-                    await using var cryptStream = LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
+                    await using var cryptStream = await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
                     await storeService.InsertFile(file.FileName, folder, cryptStream);
                 }
                 else
                 {
                     await storeService.InsertFile(file.FileName, folder, stream);
                 }
+
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);

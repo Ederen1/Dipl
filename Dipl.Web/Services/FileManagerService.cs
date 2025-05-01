@@ -45,7 +45,7 @@ public class FileManagerService(
             await DeleteFilesBeforeInsert(folder, alreadyPresentFiles);
 
         if (uploadLink is null && !string.IsNullOrEmpty(model.Password))
-            LinkSecurityService.SetupSecureLinkAsync(model.Password, link);
+            await LinkSecurityService.SetupSecureLinkAsync(model.Password, link);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         var folderContents = await UploadFiles(link.LinkId, null, model.Password, cancellationToken);
