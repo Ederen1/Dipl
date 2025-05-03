@@ -45,7 +45,7 @@ public static class LinkSecurityService
         memoryStream.Seek(0, SeekOrigin.Begin);
 
         var transform = aes.CreateEncryptor();
-        var cryptoStream = new CryptoStream(target, transform, CryptoStreamMode.Read);
+        var cryptoStream = new CryptoStream(target, transform, CryptoStreamMode.Read, true);
         return new MultiStream(memoryStream, cryptoStream);
     }
 
@@ -66,7 +66,7 @@ public static class LinkSecurityService
         aes.IV = iv;
 
         var transform = aes.CreateDecryptor();
-        return new CryptoStream(data, transform, CryptoStreamMode.Read);
+        return new CryptoStream(data, transform, CryptoStreamMode.Read, true);
     }
 
     private static async Task<byte[]> DeriveKey(byte[] salt, string password)

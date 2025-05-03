@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 namespace Dipl.Common.Util;
 
 /// <summary>
@@ -46,35 +48,35 @@ public class MultiStream : Stream
         throw new NotSupportedException();
     }
 
-    public override int Read(byte[] buffer, int offset, int count)
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
     {
-        if (buffer == null)
-            throw new ArgumentNullException(nameof(buffer));
-        if (offset < 0 || count < 0 || offset + count > buffer.Length)
-            throw new ArgumentOutOfRangeException(nameof(buffer));
-
         var totalRead = 0;
 
         // Loop until we've read the requested count or no more data
-        while (count > 0 && _currentIndex < _streams.Length)
+        while (_currentIndex < _streams.Length && totalRead < buffer.Length)
         {
             var current = _streams[_currentIndex];
-            var bytesRead = current.Read(buffer, offset, count);
+            var bytesRead = await current.ReadAsync(buffer[totalRead..], cancellationToken);
 
             if (bytesRead > 0)
-            {
                 totalRead += bytesRead;
-                offset += bytesRead;
-                count -= bytesRead;
-            }
-            else
-            {
+            else            
                 // Move to next stream when current is exhausted
                 _currentIndex++;
-            }
+
         }
 
         return totalRead;
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+    {
+        return await ReadAsync(buffer.AsMemory().Slice(offset, count), cancellationToken);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
@@ -85,9 +87,18 @@ public class MultiStream : Stream
     protected override void Dispose(bool disposing)
     {
         if (disposing)
-            // Optionally dispose inner streams
             foreach (var s in _streams)
-                s.Dispose();
+            {
+                try
+                {
+                    s.Dispose();
+                }
+                catch (NotSupportedException e) when (s is CryptoStream)
+                {
+                    // Ignore CryptoStream trying to flush a non-seekable stream
+                }
+            }
+        
         base.Dispose(disposing);
     }
 }

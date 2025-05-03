@@ -2,24 +2,59 @@ using Dipl.Business;
 using Dipl.Business.Entities;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 
 namespace Dipl.Web.Endpoints;
 
 public static class UploadEndpointsWebApplicationExtensions
 {
+    private static readonly FormOptions _defaultFormOptions = new FormOptions();
+
     public static void MapUploadEncpoints(this WebApplication app)
     {
         app.MapPost("/uploadFiles", async (HttpRequest req, AppDbContext dbContext, IStoreService storeService,
             CancellationToken cancellationToken) =>
         {
-            if (!req.HasFormContentType)
-                return Results.BadRequest();
+            if (!MultipartRequestHelper.IsMultipartContentType(req.ContentType))
+                return Results.BadRequest("Not a multipart request");
 
-            var form = await req.ReadFormAsync(cancellationToken);
-            var linkId = form["linkId"];
-            var slotId = form["slotId"];
-            var password = form["password"];
+            var boundary = MultipartRequestHelper.GetBoundary(
+                MediaTypeHeaderValue.Parse(req.ContentType),
+                _defaultFormOptions.MultipartBoundaryLengthLimit);
+
+            var reader = new MultipartReader(boundary, req.Body, 81 * 1024);;
+            var section = await reader.ReadNextSectionAsync(cancellationToken);
+
+            string? linkId = null;
+            string? slotId = null;
+            string? password = null;
+
+            // Read form data first
+            while (section != null)
+            {
+                var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(
+                    section.ContentDisposition, out var contentDisposition);
+
+                if (hasContentDispositionHeader && contentDisposition!.DispositionType.Equals("form-data"))
+                {
+                    if (contentDisposition.FileName.HasValue)
+                        break;
+                    if (contentDisposition.Name.Equals("linkId"))
+                        linkId = await new StreamReader(section.Body).ReadToEndAsync(cancellationToken);
+                    else if (contentDisposition.Name.Equals("slotId"))
+                        slotId = await new StreamReader(section.Body).ReadToEndAsync(cancellationToken);
+                    else if (contentDisposition.Name.Equals("password"))
+                        password = await new StreamReader(section.Body).ReadToEndAsync(cancellationToken);
+                }
+
+                section = await reader.ReadNextSectionAsync(cancellationToken);
+            }
+
+            if (string.IsNullOrEmpty(linkId))
+                return Results.BadRequest("LinkId is required");
 
             string folder;
             BaseLink baseLink;
@@ -52,27 +87,59 @@ public static class UploadEndpointsWebApplicationExtensions
                 if (!await LinkSecurityService.PasswordMatchesLink(baseLink, password))
                     return Results.Unauthorized();
 
-            if (form.Files.Count == 0)
-                return Results.BadRequest();
-
-            foreach (var file in form.Files)
+            
+            var filesProcessed = 0;
+            while (section != null)
             {
-                await using var stream = file.OpenReadStream();
-                if (baseLink.Salt is not null)
+                var contentDispositionHeader = section.GetContentDispositionHeader();
+
+                if (contentDispositionHeader is not null && contentDispositionHeader!.DispositionType.Equals("form-data") 
+                    && contentDispositionHeader.IsFileDisposition())
                 {
-                    await using var cryptStream =
-                        await LinkSecurityService.EncryptDataAsync(baseLink, password!, stream);
-                    await storeService.InsertFile(file.FileName, folder, cryptStream);
+                    var fileSection = section.AsFileSection();
+
+                    if (baseLink.VerifierHash is not null)
+                    {
+                        await using var cryptStream =
+                            await LinkSecurityService.EncryptDataAsync(baseLink, password!, fileSection!.FileStream!);
+                        await storeService.InsertFile(fileSection!.FileName, folder, cryptStream);
+                    }
+                    else
+                    {
+                        await storeService.InsertFile(fileSection!.FileName, folder, fileSection!.FileStream!);
+                    }
+                    filesProcessed++;
                 }
-                else
-                {
-                    await storeService.InsertFile(file.FileName, folder, stream);
-                }
+
+                section = await reader.ReadNextSectionAsync(cancellationToken);
             }
 
-            await dbContext.SaveChangesAsync(cancellationToken);
+            if (filesProcessed == 0)
+                return Results.BadRequest("No files were uploaded");
 
+            await dbContext.SaveChangesAsync(cancellationToken);
             return Results.Ok();
         });
+    }
+}
+
+internal static class MultipartRequestHelper
+{
+    public static string GetBoundary(MediaTypeHeaderValue contentType, int lengthLimit)
+    {
+        var boundary = HeaderUtilities.RemoveQuotes(contentType.Boundary).Value;
+        if (string.IsNullOrWhiteSpace(boundary))
+            throw new InvalidDataException("Missing content-type boundary.");
+
+        if (boundary.Length > lengthLimit)
+            throw new InvalidDataException($"Multipart boundary length limit {lengthLimit} exceeded.");
+
+        return boundary;
+    }
+
+    public static bool IsMultipartContentType(string? contentType)
+    {
+        return !string.IsNullOrEmpty(contentType) 
+               && contentType.Contains("multipart/", StringComparison.OrdinalIgnoreCase);
     }
 }

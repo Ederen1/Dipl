@@ -22,7 +22,7 @@ public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, I
         var transferDone = false;
         try
         {
-            await contents.CopyToAsync(file);
+            await contents.CopyToAsync(file, 1024 * 1024);
             transferDone = true;
         }
         catch (OperationCanceledException)

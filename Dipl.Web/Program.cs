@@ -21,8 +21,10 @@ builder.Services.AddBlazorise(options => { options.Immediate = true; }).AddBoots
 // Add services to the container.
 builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
-builder.WebHost.ConfigureKestrel(servecrOptions => { servecrOptions.Limits.MaxRequestBodySize = null; });
-builder.Services.Configure<FormOptions>(x => { x.MultipartBodyLengthLimit = long.MaxValue; });
+builder.WebHost.ConfigureKestrel(servecrOptions => { servecrOptions.Limits.MaxRequestBodySize = null;
+    servecrOptions.Limits.MinRequestBodyDataRate = null;
+});
+builder.Services.Configure<FormOptions>(x => { x.MultipartBodyLengthLimit = long.MaxValue; x.ValueLengthLimit = int.MaxValue; x.MultipartHeadersLengthLimit = int.MaxValue; });
 
 builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
 builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
