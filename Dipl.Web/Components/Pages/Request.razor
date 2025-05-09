@@ -14,26 +14,41 @@
 @inject IConfiguration Configuration
 @inject IStoreService StoreService
 @inject UserAuthenticationService UserAuthentication
-@inject IJSRuntime JsRuntime
-
 
 <Container>
-    @if (!_userConfirmed && Slot.RequestLink.IsProtected)
+    @if (!_userConfirmed)
     {
-        <Validations @ref="_emailValidations" ValidateOnLoad="false" Mode="ValidationMode.Manual">
-            <Field ColumnSize="ColumnSize.Is6">
-                <Validation Validator="ValidateMatchingEmail">
-                    <FieldLabel>Please enter email address this hyperlink was sent to</FieldLabel>
-                    <TextEdit Role="TextRole.Email" Placeholder="Email...">
-                        <Feedback>
-                            <ValidationError/>
-                        </Feedback>
-                    </TextEdit>
-                </Validation>
-            </Field>
+        <Validations @ref="_validations" ValidateOnLoad="false" Mode="ValidationMode.Manual">
+            @if (Slot.RequestLink.IsProtected)
+            {
+                <Field ColumnSize="ColumnSize.Is6">
+                    <Validation Validator="ValidateMatchingEmail">
+                        <FieldLabel>Please enter email address this hyperlink was sent to</FieldLabel>
+                        <TextEdit Role="TextRole.Email" Placeholder="Email...">
+                            <Feedback>
+                                <ValidationError/>
+                            </Feedback>
+                        </TextEdit>
+                    </Validation>
+                </Field>
+            }
+
+            @if (Slot.RequestLink.VerifierHash is not null)
+            {
+                <Field ColumnSize="ColumnSize.Is6">
+                    <Validation @ref="_passwordValidation" Validator="ValidationRule.IsNotEmpty">
+                        <FieldLabel>Password</FieldLabel>
+                        <TextEdit @bind-Text="Password" Role="TextRole.Password" Placeholder="Enter password...">
+                            <Feedback>
+                                <ValidationError/>
+                            </Feedback>
+                        </TextEdit>
+                    </Validation>
+                </Field>
+            }
 
             <Field ColumnSize="ColumnSize.Is2">
-                <Button Type="ButtonType.Submit" Clicked="SubmitEmail" Color="Color.Primary">Submit</Button>
+                <Button Type="ButtonType.Submit" Clicked="SubmitAuthentication" Color="Color.Primary">Submit</Button>
             </Field>
         </Validations>
     }
@@ -86,28 +101,7 @@
     }
 </Container>
 
-<Modal @ref="_modalRef">
-    <ModalContent Centered>
-        <ModalHeader>
-            <ModalTitle>Protected upload</ModalTitle>
-            <CloseButton/>
-        </ModalHeader>
-        <ModalBody>
-            <Validations ValidateOnLoad="false" @ref="_validations">
-                <Validation @ref="_passwordValidation" Validator="ValidationRule.IsNotEmpty">
-                    <Field>
-                        <FieldLabel>Password</FieldLabel>
-                        <TextEdit @bind-Text="Password" Role="TextRole.Password" Placeholder="Enter password..."/>
-                    </Field>
-                </Validation>
-            </Validations>
-        </ModalBody>
-        <ModalFooter>
-            <Button Color="Color.Secondary" Clicked="@HideModal">Close</Button>
-            <Button Color="Color.Primary" Clicked="@SubmitPasswordModal">Confirm</Button>
-        </ModalFooter>
-    </ModalContent>
-</Modal>
+
 
 
 @code {
@@ -119,13 +113,11 @@
     public Guid SlotId { get; set; }
 
     private Validations _validations = null!;
-    private Validations _emailValidations = null!;
     private bool _closed;
     private bool _canReopen;
     private bool _canViewAfterClose;
     private List<IFileEntry> _filesToUpload = [];
     private List<FileInfo> _alreadyPresentFiles = [];
-    private Modal _modalRef = null!;
     private string Password = "";
 
     private RequestLinkUploadSlot Slot { get; set; } = null!;
@@ -140,11 +132,24 @@
 
         // Check if the user responding to a request is logged in, then allow the access
         var currentUser = await UserAuthentication.GetUserInfo();
-        if (!Slot.RequestLink.IsProtected || currentUser?.Email == Slot.Email || currentUser?.Email == Slot.RequestLink.CreatedBy.Email)
+
+        if (Slot.RequestLink.VerifierHash is null)
         {
-            _userConfirmed = true;
-            await LoadFilesAndLogic();
+            if (Slot.RequestLink.IsProtected)
+            {
+                _userConfirmed = currentUser?.Email == Slot.Email || currentUser?.Email == Slot.RequestLink.CreatedBy.Email;
+            }
+            else
+            {
+                _userConfirmed = true;
+            }
         }
+        else
+        {
+            _userConfirmed = false;
+        }
+
+        await LoadFilesAndLogic();
     }
 
     private void ValidateMatchingEmail(ValidatorEventArgs e)
@@ -184,20 +189,34 @@
             return;
         }
 
-        if (Slot.RequestLink.VerifierHash is not null)
-            await _modalRef.Show();
-        else
+        try
         {
             _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, Password);
             _filesToUpload.Clear();
             _closed = true;
         }
+        catch (JSException e)
+        {
+            Console.WriteLine(e.Message);
+            filePickerValidationMessage = "Error uploading files. Please try again.";
+        }
     }
 
-    private async Task SubmitEmail()
+    private async Task SubmitAuthentication()
     {
-        if (!await _emailValidations.ValidateAll())
+        if (!await _validations.ValidateAll())
             return;
+
+        // Validate password if required
+        if (Slot.RequestLink.VerifierHash is not null)
+        {
+            bool passwordMatches = await LinkSecurityService.PasswordMatchesLink(Slot.RequestLink, Password);
+            if (!passwordMatches)
+            {
+                _passwordValidation.NotifyValidationStatusChanged(ValidationStatus.Error, ["Password does not match"]);
+                return;
+            }
+        }
 
         _userConfirmed = true;
         await LoadFilesAndLogic();
@@ -222,30 +241,5 @@
         return null;
     }
 
-
-    private async Task HideModal()
-    {
-        await _modalRef.Hide();
-    }
-
-    private async Task SubmitPasswordModal()
-    {
-        if (await _validations.ValidateAll())
-        {
-            try
-            {
-                await HideModal();
-                _alreadyPresentFiles = await FileManagerService.RespondToFileRequest(Slot, _filesToUpload, _alreadyPresentFiles, Password);
-                _filesToUpload.Clear();
-                _closed = true;
-                Password = "";
-            }
-            catch (CryptographicException e)
-            {
-                await _modalRef.Show();
-                _passwordValidation.NotifyValidationStatusChanged(ValidationStatus.Error, ["Password does not match"]);
-            }
-        }
-    }
 
 }
