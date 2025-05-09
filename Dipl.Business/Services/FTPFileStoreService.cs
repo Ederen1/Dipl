@@ -6,6 +6,9 @@ using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
+/// <summary>
+///     Implements <see cref="IStoreService" /> using an FTPS server as the backing store.
+/// </summary>
 public class FTPFileStoreService : IStoreService
 {
     private readonly AsyncFtpClient _client;
@@ -14,11 +17,11 @@ public class FTPFileStoreService : IStoreService
     public FTPFileStoreService(IOptions<FTPFileStoreServiceConfiguration> options)
     {
         _client = new AsyncFtpClient(options.Value.Host, options.Value.Username, options.Value.Password,
-            options.Value.Port ?? 0);
+            options.Value.Port ?? 990); // Default to port 990 for FTPS if not specified.
 
-        _client.Config.EncryptionMode = FtpEncryptionMode.Explicit;
+        _client.Config.EncryptionMode = FtpEncryptionMode.Explicit; // Use explicit FTPS.
         BasePath = options.Value.BasePath;
-        _client.AutoConnect();
+        _client.AutoConnect(); // Automatically connect and authenticate when the first command is issued.
     }
 
     public async Task InsertFile(string fileName, string folder, Stream contents)

@@ -81,21 +81,34 @@
     [Parameter]
     public EventCallback<List<IFileEntry>> ValueChanged { get; set; }
 
+    /// <summary>
+    ///     List of files that are already present (e.g., previously uploaded)
+    ///     and can only be removed by the user. These are not part of new uploads.
+    /// </summary>
     [Parameter]
     public List<FileInfo> DeleteOnlyValue { get; set; } = [];
 
     [Parameter]
     public EventCallback<List<FileInfo>> DeleteOnlyValueChanged { get; set; }
 
+    /// <summary>
+    ///     If true, the file picker is disabled and files cannot be added or removed.
+    /// </summary>
     [Parameter]
     public bool Disabled { get; set; }
 
+    /// <summary>
+    ///     Array of accepted file extensions (e.g., ".jpg", ".png").
+    ///     If empty, all file types are accepted.
+    /// </summary>
     [Parameter]
     public string[] Accept { get; set; } = [];
 
     private FileEdit _fileEdit = null!;
     private string _disabledClass = "";
 
+    // Controls whether the native file dialog allows directory selection.
+    // True by default for "Add folder", set to false for "Add file".
     private bool _pickingDirectory = true;
 
     private async Task AddFile()
@@ -119,6 +132,10 @@
         });
     }
 
+    /// <summary>
+    ///     Removes a file from the <see cref="Value" /> list (files to be uploaded)
+    ///     and also from the JavaScript global file store.
+    /// </summary>
     private async Task RemoveFile(IFileEntry file)
     {
         Value.Remove(file);
@@ -126,12 +143,21 @@
         await ValueChanged.InvokeAsync(Value);
     }
 
+    /// <summary>
+    ///     Removes a file from the <see cref="DeleteOnlyValue" /> list (pre-existing files).
+    /// </summary>
     private async Task RemoveFileDeleteOnly(FileInfo file)
     {
         DeleteOnlyValue.Remove(file);
         await DeleteOnlyValueChanged.InvokeAsync(DeleteOnlyValue);
     }
 
+    /// <summary>
+    ///     Handles the event when files are selected via the native file dialog or drag-and-drop.
+    ///     It updates the <see cref="Value" /> list, replacing existing files with the same name
+    ///     or adding new ones. It also removes files from <see cref="DeleteOnlyValue" /> if a
+    ///     file with the same name is newly selected for upload.
+    /// </summary>
     private async Task OnFileChange(FileChangedEventArgs e)
     {
         List<IFileEntry> append = [];
@@ -161,12 +187,19 @@
         _disabledClass = Disabled ? "disabled" : "";
     }
 
+    /// <summary>
+    ///     Initializes JavaScript interop for the picker on the first render.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
             await JSRuntime.InvokeVoidAsync("setupPicker");
     }
 
+    /// <summary>
+    ///     Resets the file picker by clearing the JavaScript global file store
+    ///     and re-initializing the JavaScript event listeners.
+    /// </summary>
     public async Task ResetPicker()
     {
         await JSRuntime.InvokeVoidAsync("clearFileUploadStore");

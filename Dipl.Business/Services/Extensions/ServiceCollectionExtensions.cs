@@ -7,6 +7,9 @@ using Microsoft.Extensions.Options;
 
 namespace Dipl.Business.Services.Extensions;
 
+/// <summary>
+///     Extension methods for setting up services in the IServiceCollection for the Business layer.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     public static void AddServiceLayer(this IServiceCollection serviceCollection)
@@ -16,6 +19,7 @@ public static class ServiceCollectionExtensions
         serviceCollection.AddScoped<UserAuthenticationService>();
         serviceCollection.AddScoped<EmailSenderService>();
         serviceCollection.AddScoped<HtmlRenderer>();
+        // Configure and register SmtpClient for sending emails.
         serviceCollection.AddScoped<SmtpClient>(sp =>
         {
             var settings = sp.GetRequiredService<IOptions<SmtpSettings>>().Value;

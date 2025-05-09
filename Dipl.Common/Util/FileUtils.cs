@@ -2,8 +2,16 @@ using System.Globalization;
 
 namespace Dipl.Common.Util;
 
+/// <summary>
+///     Utility methods for file operations.
+/// </summary>
 public static class FileUtils
 {
+    /// <summary>
+    ///     Converts a byte count to a human-readable string representation (e.g., 1024 bytes to "1.0KB").
+    /// </summary>
+    /// <param name="byteCount">The number of bytes.</param>
+    /// <returns>A human-readable string representing the byte count.</returns>
     public static string BytesToString(long byteCount)
     {
         string[] suf = ["B", "KB", "MB", "GB", "TB", "PB", "EB"];
@@ -16,6 +24,12 @@ public static class FileUtils
         return (Math.Sign(byteCount) * num).ToString(CultureInfo.InvariantCulture) + suf[place];
     }
 
+    /// <summary>
+    ///     Sanitizes a path string by replacing spaces and line endings with underscores
+    ///     and removing invalid path and file name characters.
+    /// </summary>
+    /// <param name="path">The path string to sanitize.</param>
+    /// <returns>A sanitized path string.</returns>
     public static string SanitizePath(string path)
     {
         var notAllowed = Path.GetInvalidPathChars().Concat(Path.GetInvalidFileNameChars());

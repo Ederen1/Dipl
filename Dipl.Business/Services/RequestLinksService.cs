@@ -50,6 +50,11 @@ public class RequestLinksService(
         await emailSenderService.NotifyOfRequest(createModel, link, createdBy.UserName);
     }
 
+    /// <summary>
+    ///     Sends a notification email when files have been uploaded to a request link slot.
+    /// </summary>
+    /// <param name="model">The model containing details for the notification email.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     public async Task NotifyFileRequestUpload(NotifyRequestUploadedModel model,
         CancellationToken cancellationToken = default)
     {

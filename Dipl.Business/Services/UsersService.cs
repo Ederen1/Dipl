@@ -17,6 +17,12 @@ public class UsersService(
         await dbContext.SaveChangesAsync();
     }
 
+    /// <summary>
+    ///     Retrieves the currently authenticated user. If no user is authenticated, returns the guest user.
+    ///     If an authenticated user is not found in the database, an exception is thrown.
+    /// </summary>
+    /// <returns>The current <see cref="User" /> or the guest <see cref="User" />.</returns>
+    /// <exception cref="Exception">Thrown if a logged-in user is not found in the database.</exception>
     public async Task<User> GetCurrentUser()
     {
         var currentUser = await userAuthenticationService.GetUserInfo();

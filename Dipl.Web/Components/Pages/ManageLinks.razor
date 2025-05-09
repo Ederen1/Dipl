@@ -3,9 +3,9 @@
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
 @using Dipl.Business.Services.Interfaces
+@using Dipl.Common.Types
 @using Dipl.Common.Util
 @using Microsoft.EntityFrameworkCore
-@using Dipl.Common.Types
 
 @inject UsersService UsersService
 @inject AppDbContext DbContext
@@ -316,8 +316,8 @@
     private int _uploadLinksCount;
     private List<RequestLink> _currentRequestLinks = [];
     private List<UploadLink> _currentUploadLinks = [];
-    private Dictionary<string, FileInfo[]> _slotFiles = new();
-    private Dictionary<string, FileInfo[]> _linkFiles = new();
+    private readonly Dictionary<string, FileInfo[]> _slotFiles = new();
+    private readonly Dictionary<string, FileInfo[]> _linkFiles = new();
 
     private string _tooltipText = "";
     private DownloadWithPasswordModal _downloadWithPasswordModal = null!;
@@ -331,11 +331,9 @@
 
     private async Task LoadCounts()
     {
-        _requestLinksCount = await DbContext.RequestLinks
-            .CountAsync(link => link.CreatedById == _currentUser.UserId);
+        _requestLinksCount = await DbContext.RequestLinks.CountAsync(link => link.CreatedById == _currentUser.UserId);
 
-        _uploadLinksCount = await DbContext.UploadLinks
-            .CountAsync(link => link.CreatedById == _currentUser.UserId);
+        _uploadLinksCount = await DbContext.UploadLinks.CountAsync(link => link.CreatedById == _currentUser.UserId);
     }
 
     private async Task ChangePage(bool next, bool isRequestLinks)
@@ -405,25 +403,14 @@
 
     private async Task LoadRequestLinksPage()
     {
-        _currentRequestLinks = await DbContext.RequestLinks
-            .Where(link => link.CreatedById == _currentUser.UserId)
-            .Include(requestLink => requestLink.UploadSlots)
-            .OrderByDescending(x => x.Created)
-            .Skip(_requestLinksPage * PageSize)
-            .Take(PageSize)
-            .ToListAsync();
+        _currentRequestLinks = await DbContext.RequestLinks.Where(link => link.CreatedById == _currentUser.UserId).Include(requestLink => requestLink.UploadSlots).OrderByDescending(x => x.Created).Skip(_requestLinksPage * PageSize).Take(PageSize).ToListAsync();
 
         await LoadRequestLinksFileInfo();
     }
 
     private async Task LoadUploadLinksPage()
     {
-        _currentUploadLinks = await DbContext.UploadLinks
-            .Where(link => link.CreatedById == _currentUser.UserId)
-            .OrderByDescending(x => x.Created)
-            .Skip(_uploadLinksPage * PageSize)
-            .Take(PageSize)
-            .ToListAsync();
+        _currentUploadLinks = await DbContext.UploadLinks.Where(link => link.CreatedById == _currentUser.UserId).OrderByDescending(x => x.Created).Skip(_uploadLinksPage * PageSize).Take(PageSize).ToListAsync();
 
         await LoadUploadLinksFileInfo();
     }
@@ -491,9 +478,7 @@
     private async Task DownloadFolder(Guid linkId, Guid? slotId)
     {
         var url = slotId is null ? $"/download/fromUpload/{linkId}" : $"/download/fromRequest/{linkId}/{slotId}";
-        var passwordProtected = slotId is null
-            ? _currentUploadLinks.First(x => x.LinkId == linkId).Salt is not null
-            : _currentRequestLinks.First(x => x.LinkId == linkId).Salt is not null;
+        var passwordProtected = slotId is null ? _currentUploadLinks.First(x => x.LinkId == linkId).Salt is not null : _currentRequestLinks.First(x => x.LinkId == linkId).Salt is not null;
         if (passwordProtected)
         {
             _downloadWithPasswordModal.DownloadUrl = url;
@@ -504,4 +489,5 @@
             await JsRuntime.InvokeVoidAsync("window.downloadPasswordProtectedFile", url);
         }
     }
+
 }

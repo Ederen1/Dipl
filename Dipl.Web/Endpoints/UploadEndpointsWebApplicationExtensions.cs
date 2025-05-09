@@ -11,7 +11,7 @@ namespace Dipl.Web.Endpoints;
 
 public static class UploadEndpointsWebApplicationExtensions
 {
-    private static readonly FormOptions _defaultFormOptions = new FormOptions();
+    private static readonly FormOptions _defaultFormOptions = new();
 
     public static void MapUploadEncpoints(this WebApplication app)
     {
@@ -21,11 +21,11 @@ public static class UploadEndpointsWebApplicationExtensions
             if (!MultipartRequestHelper.IsMultipartContentType(req.ContentType))
                 return Results.BadRequest("Not a multipart request");
 
-            var boundary = MultipartRequestHelper.GetBoundary(
-                MediaTypeHeaderValue.Parse(req.ContentType),
+            var boundary = MultipartRequestHelper.GetBoundary(MediaTypeHeaderValue.Parse(req.ContentType),
                 _defaultFormOptions.MultipartBoundaryLengthLimit);
 
-            var reader = new MultipartReader(boundary, req.Body, 81 * 1024);;
+            var reader = new MultipartReader(boundary, req.Body, 81 * 1024);
+            ;
             var section = await reader.ReadNextSectionAsync(cancellationToken);
 
             string? linkId = null;
@@ -87,14 +87,15 @@ public static class UploadEndpointsWebApplicationExtensions
                 if (!await LinkSecurityService.PasswordMatchesLink(baseLink, password))
                     return Results.Unauthorized();
 
-            
+
             var filesProcessed = 0;
             while (section != null)
             {
                 var contentDispositionHeader = section.GetContentDispositionHeader();
 
-                if (contentDispositionHeader is not null && contentDispositionHeader!.DispositionType.Equals("form-data") 
-                    && contentDispositionHeader.IsFileDisposition())
+                if (contentDispositionHeader is not null &&
+                    contentDispositionHeader!.DispositionType.Equals("form-data") &&
+                    contentDispositionHeader.IsFileDisposition())
                 {
                     var fileSection = section.AsFileSection();
 
@@ -108,6 +109,7 @@ public static class UploadEndpointsWebApplicationExtensions
                     {
                         await storeService.InsertFile(fileSection!.FileName, folder, fileSection!.FileStream!);
                     }
+
                     filesProcessed++;
                 }
 
@@ -139,7 +141,7 @@ internal static class MultipartRequestHelper
 
     public static bool IsMultipartContentType(string? contentType)
     {
-        return !string.IsNullOrEmpty(contentType) 
-               && contentType.Contains("multipart/", StringComparison.OrdinalIgnoreCase);
+        return !string.IsNullOrEmpty(contentType) &&
+               contentType.Contains("multipart/", StringComparison.OrdinalIgnoreCase);
     }
 }

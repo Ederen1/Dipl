@@ -9,7 +9,7 @@ namespace Dipl.Common.Util;
 public class MultiStream : Stream
 {
     private readonly Stream[] _streams;
-    private int _currentIndex;
+    private int _currentIndex; // Index of the current stream in the _streams array being read from.
 
     public MultiStream(params Stream[] streams)
     {
@@ -24,13 +24,13 @@ public class MultiStream : Stream
     public override bool CanSeek => false;
     public override bool CanWrite => false;
 
-    // Length is not supported on a non-seekable concatenated stream
-    public override long Length => throw new NotSupportedException();
+    // Length is not supported on a non-seekable concatenated stream.
+    public override long Length => throw new NotSupportedException("The stream does not support seeking.");
 
     public override long Position
     {
-        get => throw new NotSupportedException();
-        set => throw new NotSupportedException();
+        get => throw new NotSupportedException("The stream does not support seeking.");
+        set => throw new NotSupportedException("The stream does not support seeking.");
     }
 
     public override void Flush()
@@ -52,7 +52,7 @@ public class MultiStream : Stream
     {
         var totalRead = 0;
 
-        // Loop until we've read the requested count or no more data
+        // Loop until we've filled the buffer or exhausted all streams.
         while (_currentIndex < _streams.Length && totalRead < buffer.Length)
         {
             var current = _streams[_currentIndex];
@@ -60,10 +60,9 @@ public class MultiStream : Stream
 
             if (bytesRead > 0)
                 totalRead += bytesRead;
-            else            
-                // Move to next stream when current is exhausted
+            else
+                // Move to the next stream when the current one is exhausted.
                 _currentIndex++;
-
         }
 
         return totalRead;
@@ -88,7 +87,6 @@ public class MultiStream : Stream
     {
         if (disposing)
             foreach (var s in _streams)
-            {
                 try
                 {
                     s.Dispose();
@@ -97,8 +95,7 @@ public class MultiStream : Stream
                 {
                     // Ignore CryptoStream trying to flush a non-seekable stream
                 }
-            }
-        
+
         base.Dispose(disposing);
     }
 }

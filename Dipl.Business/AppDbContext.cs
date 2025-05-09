@@ -1,4 +1,4 @@
-﻿using Dipl.Business.Entities;
+using Dipl.Business.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dipl.Business;
@@ -12,6 +12,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Store AllowedExtensions as a comma-separated string in the database.
         modelBuilder.Entity<RequestLink>().Property(e => e.AllowedExtensions).HasConversion(a => string.Join(',', a),
             b => b.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
@@ -21,6 +22,7 @@ public class AppDbContext(DbContextOptions options) : DbContext(options)
 
     private static void InitializeData(ModelBuilder modelBuilder)
     {
+        // Seed a default guest user.
         modelBuilder.Entity<User>().HasData(new User
         {
             UserId = User.GuestUserId,

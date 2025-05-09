@@ -1,5 +1,4 @@
 @page "/request/{linkId:guid}/{slotId:guid}"
-@using System.Security.Cryptography
 @using Dipl.Business
 @using Dipl.Business.Entities
 @using Dipl.Business.Services
@@ -210,7 +209,7 @@
         // Validate password if required
         if (Slot.RequestLink.VerifierHash is not null)
         {
-            bool passwordMatches = await LinkSecurityService.PasswordMatchesLink(Slot.RequestLink, Password);
+            var passwordMatches = await LinkSecurityService.PasswordMatchesLink(Slot.RequestLink, Password);
             if (!passwordMatches)
             {
                 _passwordValidation.NotifyValidationStatusChanged(ValidationStatus.Error, ["Password does not match"]);

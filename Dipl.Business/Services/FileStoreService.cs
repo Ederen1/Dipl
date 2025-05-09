@@ -1,4 +1,4 @@
-﻿using Dipl.Business.Services.Interfaces;
+using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Configs;
 using Dipl.Common.Extensions;
 using Microsoft.Extensions.Logging;
@@ -7,6 +7,9 @@ using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Business.Services;
 
+/// <summary>
+///     Implements <see cref="IStoreService" /> using the local file system as the backing store.
+/// </summary>
 public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, ILogger<FileStoreService> logger)
     : IStoreService
 {
@@ -17,11 +20,12 @@ public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, I
         var fullPath = Path.Combine(_basePath, folder, fileName);
         logger.LogInformation("Uploading file: {}", fileName);
 
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!); // Ensure the target directory exists.
         await using var file = File.Open(fullPath, FileMode.Create, FileAccess.Write);
         var transferDone = false;
         try
         {
+            // Copy with a larger buffer to potentially improve performance for big files.
             await contents.CopyToAsync(file, 1024 * 1024);
             transferDone = true;
         }
@@ -31,6 +35,7 @@ public class FileStoreService(IOptions<FileStoreServiceConfiguration> options, I
         }
         finally
         {
+            // If the transfer was not completed for some reason, delete the partially written file.
             if (!transferDone)
                 File.Delete(fullPath);
         }

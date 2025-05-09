@@ -11,6 +11,9 @@ using Microsoft.Extensions.Options;
 
 namespace Dipl.Business.Services;
 
+/// <summary>
+///     Service used for sending emails for the whole web app.
+/// </summary>
 public class EmailSenderService(
     IOptions<EmailSenderSettings> settings,
     ILogger<EmailSenderService> logger,
@@ -20,6 +23,9 @@ public class EmailSenderService(
 {
     private MailAddress Sender => new(settings.Value.SenderEmail);
 
+    /// <summary>
+    ///     Sends email notifications to users specified in a new file request.
+    /// </summary>
     public async Task NotifyOfRequest(RequestLinkCreateModel createModel, RequestLink link, string senderName)
     {
         var models = link.UploadSlots.Select(slot => new NotifyUserRequestedModel
@@ -54,6 +60,9 @@ public class EmailSenderService(
             }
     }
 
+    /// <summary>
+    ///     Sends an email notification to recipients when files are uploaded via an upload link.
+    /// </summary>
     public async Task NotifyUserUploaded(UploadLink link, CreateUploadLinkModel model,
         CancellationToken cancellationToken = default)
     {
@@ -84,6 +93,9 @@ public class EmailSenderService(
         }
     }
 
+    /// <summary>
+    ///     Sends an email notification to the creator of a request link when files are uploaded to one of its slots.
+    /// </summary>
     public async Task NotifyUserUploadedToRequestLink(NotifyRequestUploadedModel model,
         CancellationToken cancellationToken)
     {
@@ -108,6 +120,12 @@ public class EmailSenderService(
         }
     }
 
+    /// <summary>
+    ///     Renders a Razor component to an HTML string.
+    /// </summary>
+    /// <typeparam name="TElem">The type of the Razor component to render.</typeparam>
+    /// <param name="model">The model to pass to the Razor component.</param>
+    /// <returns>The rendered HTML string.</returns>
     private async Task<string> RenderTemplate<TElem>(object model) where TElem : ComponentBase
     {
         var html = await htmlRenderer.Dispatcher.InvokeAsync(async () =>
