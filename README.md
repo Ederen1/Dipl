@@ -24,7 +24,7 @@ cd Dipl
 dotnet run --project Dipl.Web
 ```
 
-The application can be accessed at `https://localhost:7228`.
+The application can be accessed at `https://localhost:7228` by default.
 
 ## Configuration
 
@@ -44,7 +44,7 @@ There are two configuration parameters that need to be specified:
 
 They can be obtained from Microsoft Azure app registration.
 
-It is not recommended to use `appsettings.json` to set these parameters. Instead, use environment variables or a secrets manager.
+It is not recommended to use `appsettings.json` to set these parameters in production. Instead, use environment variables or a secrets manager.
 
 ## License
 
