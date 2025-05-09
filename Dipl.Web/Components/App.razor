@@ -47,6 +47,18 @@
         }
     }
 
+    window.clearFileUploadStore = () => {
+        window.globalFileUplaodStore = [];
+        // Reset all progress bars
+        const progressBars = document.querySelectorAll("div[id^='js-progress-']");
+        for (const bar of progressBars) {
+            const progressBar = bar.querySelector("div.progress-bar");
+            if (progressBar) {
+                progressBar.style.width = '0%';
+            }
+        }
+    }
+
     window.downloadPasswordProtectedFile = async (url, password) => {
         const response = await fetch(url, {
             method: 'GET',

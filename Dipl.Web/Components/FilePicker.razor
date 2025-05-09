@@ -167,4 +167,10 @@
             await JSRuntime.InvokeVoidAsync("setupPicker");
     }
 
+    public async Task ResetPicker()
+    {
+        await JSRuntime.InvokeVoidAsync("clearFileUploadStore");
+        await JSRuntime.InvokeVoidAsync("setupPicker");
+    }
+
 }

@@ -127,7 +127,8 @@ else
             <FieldLabel>Upload files here</FieldLabel>
             <FieldBody>
                 <Dipl.Web.Components.FilePicker @bind-Value="_model.FilesToUpload"
-                                                @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"/>
+                                                @bind-DeleteOnlyValue="_alreadyPresentFiles" Disabled="_disableEdit"
+                                                @ref="_filePicker"/>
             </FieldBody>
         </Field>
 
@@ -162,6 +163,7 @@ else
     private bool _closed;
     private bool _disableEdit;
     private bool _submitDisabled;
+    private Dipl.Web.Components.FilePicker _filePicker = null!;
 
     protected override void OnParametersSet()
     {
@@ -198,7 +200,7 @@ else
         e.Status = !_model.EmailTo.Any() ? ValidationStatus.Error : ValidationStatus.Success;
     }
 
-    private void GoBack()
+    private async Task GoBack()
     {
         _closed = false;
         _model = new FileUploadModel();
@@ -206,6 +208,9 @@ else
         _submitDisabled = false;
         _currentUploadLink = null;
         _alreadyPresentFiles = [];
+        
+        // Reset file picker to clear JavaScript global file store
+        await _filePicker.ResetPicker();
     }
 
     private async Task CopyToClipboard()
