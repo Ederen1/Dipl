@@ -50,8 +50,15 @@
                                             @if (link.IsProtected)
                                             {
                                                 <Badge Color="Color.Danger" Margin="Margin.Is1.OnX">
-                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Lock"/>
-                                                    Protected
+                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Mail"/>
+                                                    Verify recipient
+                                                </Badge>
+                                            }
+                                            @if (link.Salt is not null)
+                                            {
+                                                <Badge Color="Color.Warning" Margin="Margin.Is1.OnX">
+                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Key"/>
+                                                    Password
                                                 </Badge>
                                             }
                                             @if (link.NotifyOnUpload)
@@ -207,17 +214,32 @@
 
                         <Card Margin="Margin.Is4.FromTop" Shadow="Shadow.Small">
                             <CardHeader>
-                                <CardTitle Size="3">
-                                    <Anchor To="@("/link/" + link.LinkId)">@link.LinkTitle</Anchor>
-                                    <Button Color="Color.Light" Margin="Margin.Is2.FromStart"
-                                            Clicked="() => DownloadFolder(link.LinkId, null)">
-                                        <Icon IconSize="IconSize.Small" Name="IconName.Download"></Icon>
-                                    </Button>
-                                </CardTitle>
-                                <CardSubtitle>
-                                    <Icon Name="IconName.Clock"/>
-                                    Created @link.Created
-                                </CardSubtitle>
+                                <Row>
+                                    <Column>
+                                        <CardTitle Size="3">
+                                            <Anchor To="@("/link/" + link.LinkId)">@link.LinkTitle</Anchor>
+                                            <Button Color="Color.Light" Margin="Margin.Is2.FromStart"
+                                                    Clicked="() => DownloadFolder(link.LinkId, null)">
+                                                <Icon IconSize="IconSize.Small" Name="IconName.Download"></Icon>
+                                            </Button>
+                                        </CardTitle>
+                                        <CardSubtitle>
+                                            <Icon Name="IconName.Clock"/>
+                                            Created @link.Created
+                                        </CardSubtitle>
+                                    </Column>
+                                    <Column ColumnSize="ColumnSize.IsAuto" Padding="Padding.Is2.FromEnd">
+                                        <Div Flex="Flex.JustifyContent.End">
+                                            @if (link.Salt is not null)
+                                            {
+                                                <Badge Color="Color.Warning" Margin="Margin.Is1.OnX">
+                                                    <Icon Margin="Margin.Is1.FromEnd" Name="IconName.Key"/>
+                                                    Password
+                                                </Badge>
+                                            }
+                                        </Div>
+                                    </Column>
+                                </Row>
                             </CardHeader>
                             <CardBody>
                                 <Text>@link.Message</Text>
@@ -311,7 +333,7 @@
     {
         _requestLinksCount = await DbContext.RequestLinks
             .CountAsync(link => link.CreatedById == _currentUser.UserId);
-        
+
         _uploadLinksCount = await DbContext.UploadLinks
             .CountAsync(link => link.CreatedById == _currentUser.UserId);
     }
@@ -469,8 +491,8 @@
     private async Task DownloadFolder(Guid linkId, Guid? slotId)
     {
         var url = slotId is null ? $"/download/fromUpload/{linkId}" : $"/download/fromRequest/{linkId}/{slotId}";
-        var passwordProtected = slotId is null 
-            ? _currentUploadLinks.First(x => x.LinkId == linkId).Salt is not null 
+        var passwordProtected = slotId is null
+            ? _currentUploadLinks.First(x => x.LinkId == linkId).Salt is not null
             : _currentRequestLinks.First(x => x.LinkId == linkId).Salt is not null;
         if (passwordProtected)
         {
