@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using Dipl.Business;
+using Dipl.Business.Entities;
 using Dipl.Business.Services;
 using Dipl.Business.Services.Interfaces;
 using Dipl.Common.Util;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FileInfo = Dipl.Common.Types.FileInfo;
 
 namespace Dipl.Web.Endpoints;
 
@@ -30,35 +32,16 @@ public static class DownloadEndpointsWebApplicationExtensions
             var sanitizedTitle = FileUtils.SanitizePath(link.LinkTitle!);
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
             context.Response.Headers.ContentType = "application/zip";
-
-            using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
+            
             try
             {
-                foreach (var file in files)
-                {
-                    await using var baseFile = await storeService.GetFile(file.Path);
-
-                    var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
-                    await using var entryStream = entry.Open();
-                    if (link.Salt is not null)
-                    {
-                        await using var cryptoStream =
-                            await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
-                        await cryptoStream.CopyToAsync(entryStream);
-                    }
-                    else
-                    {
-                        await baseFile.CopyToAsync(entryStream);
-                    }
-                }
+                await CreateZipArchive(context, files, storeService, link, password);    
             }
             catch (Exception e)
             {
                 app.Logger.LogError("Loading file from storage failed, {}", e);
                 return Results.NotFound("Loading from storage failed");
             }
-
-
             return Results.Empty;
         });
 
@@ -185,32 +168,13 @@ public static class DownloadEndpointsWebApplicationExtensions
                 return Results.Unauthorized();
 
             var sanitizedTitle = FileUtils.SanitizePath(slot!.RequestLink.LinkTitle!);
-
-            // Set the Content-Disposition header for the file name
+            
             context.Response.Headers.ContentDisposition = $"attachment; filename=\"{sanitizedTitle}.zip\";";
-            // Set the content type for ZIP files
             context.Response.Headers.ContentType = "application/zip";
 
             try
             {
-                using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
-                foreach (var file in files)
-                {
-                    await using var baseFile = await storeService.GetFile(file.Path);
-
-                    var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
-                    await using var entryStream = entry.Open();
-                    if (link.Salt is not null)
-                    {
-                        await using var cryptoStream =
-                            await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
-                        await cryptoStream.CopyToAsync(entryStream);
-                    }
-                    else
-                    {
-                        await baseFile.CopyToAsync(entryStream);
-                    }
-                }
+                await CreateZipArchive(context, files, storeService, link, password);
             }
             catch (Exception e)
             {
@@ -221,5 +185,27 @@ public static class DownloadEndpointsWebApplicationExtensions
 
             return Results.Empty;
         });
+    }
+
+    private static async Task CreateZipArchive(HttpContext context, FileInfo[] files, IStoreService storeService,
+        BaseLink link, string? password)
+    {
+        using var archive = new ZipArchive(context.Response.BodyWriter.AsStream(), ZipArchiveMode.Create, true);
+        foreach (var file in files)
+        {
+            await using var baseFile = await storeService.GetFile(file.Path);
+
+            var entry = archive.CreateEntry(file.Name, CompressionLevel.Optimal);
+            await using var entryStream = entry.Open();
+            if (link.Salt is not null)
+            {
+                await using var cryptoStream =  await LinkSecurityService.DecryptDataAsync(link, password!, baseFile);
+                await cryptoStream.CopyToAsync(entryStream);
+            }
+            else
+            {
+                await baseFile.CopyToAsync(entryStream);
+            }
+        }
     }
 }

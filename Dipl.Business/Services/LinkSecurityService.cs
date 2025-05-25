@@ -85,7 +85,7 @@ public static class LinkSecurityService
     public static async Task<Stream> DecryptDataAsync(BaseLink link, string password, Stream data)
     {
         if (link.VerifierSalt is null || link.VerifierHash is null || link.Salt is null)
-            throw new Exception("Link security parameters are not specified properly");
+            throw new Exception("Security parameters are wrong");
 
         if (string.IsNullOrEmpty(password))
             throw new Exception("Password is not set");

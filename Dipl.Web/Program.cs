@@ -14,7 +14,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuration = builder.Configuration;
+var conf = builder.Configuration;
 
 builder.Services.AddBlazorise(options => { options.Immediate = true; }).AddBootstrap5Providers().AddFontAwesomeIcons();
 
@@ -33,14 +33,14 @@ builder.Services.Configure<FormOptions>(x =>
     x.MultipartHeadersLengthLimit = int.MaxValue;
 });
 
-builder.Services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
-builder.Services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSenderSettings"));
+builder.Services.Configure<SmtpSettings>(conf.GetSection("SmtpSettings"));
+builder.Services.Configure<EmailSenderSettings>(conf.GetSection("EmailSenderSettings"));
 builder.Services.Configure<FileStoreServiceConfiguration>(
-    configuration.GetSection("FileStoreConfiguration:FileStoreService"));
+    conf.GetSection("FileStoreConfiguration:FileStoreService"));
 builder.Services.Configure<FTPFileStoreServiceConfiguration>(
-    configuration.GetSection("FileStoreConfiguration:FtpStoreService"));
+    conf.GetSection("FileStoreConfiguration:FtpStoreService"));
 
-if (configuration.GetSection("FileStoreConfiguration:FileStoreService").Exists())
+if (conf.GetSection("FileStoreConfiguration:FileStoreService").Exists())
     builder.Services.AddScoped<IStoreService, FileStoreService>();
 else
     builder.Services.AddScoped<IStoreService, FTPFileStoreService>();
@@ -50,27 +50,30 @@ builder.Services.AddAuthentication("Cookies").AddCookie(opt => { opt.Cookie.Name
     .AddMicrosoftAccount(opt =>
     {
         opt.SignInScheme = "Cookies";
-        opt.ClientId = configuration["Authentication:Microsoft:ClientId"]!;
-        opt.ClientSecret = configuration["Authentication:Microsoft:ClientSecret"]!;
+        opt.ClientId = conf["Authentication:Microsoft:ClientId"]!;
+        opt.ClientSecret = conf["Authentication:Microsoft:ClientSecret"]!;
 
-        opt.Events.OnTicketReceived = context =>
+        opt.Events.OnTicketReceived = ctx =>
         {
-            var email = context.Principal?.FindFirst(ClaimTypes.Email)?.Value ??
-                        context.Principal?.FindFirst("email")?.Value;
+            var email = ctx.Principal?.FindFirst(ClaimTypes.Email)?.Value;
+            email ??= ctx.Principal?.FindFirst("email")?.Value;
 
             if (string.IsNullOrEmpty(email))
+            {
+                ctx.Response.Redirect("/failSignin");
+                return Task.CompletedTask;
+            }
+
+            var domains = conf.GetSection("AllowedDomains").Get<string[]>();
+            if (domains?.Any(x => email.EndsWith(x)) == true)
                 return Task.CompletedTask;
 
-            var allowedDomains = configuration.GetSection("AllowedDomains").Get<string[]>();
-            if (allowedDomains?.Any(x => email.EndsWith(x)) == true)
+            var emails = conf.GetSection("AllowedEmails").Get<string[]>();
+            if (emails?.Contains(email) == true)
                 return Task.CompletedTask;
 
-            var allowedEmails = configuration.GetSection("AllowedEmails").Get<string[]>();
-            if (allowedEmails?.Contains(email) == true)
-                return Task.CompletedTask;
-
-            context.Response.Redirect("/failSignin");
-            context.HandleResponse();
+            ctx.Response.Redirect("/failSignin");
+            ctx.HandleResponse();
             return Task.CompletedTask;
         };
     });
@@ -81,7 +84,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies();
-    options.UseSqlite(configuration["ConnectionStrings:Db"]!);
+    options.UseSqlite(conf["ConnectionStrings:Db"]!);
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
